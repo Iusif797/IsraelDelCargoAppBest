@@ -1,0 +1,19 @@
+name: israeldelcargoapplication
+description: Приложение для логистической компании ISRAELDELCARGO
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.17.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sqflite: ^2.0.0+4
+  path: ^1.8.0
+
+flutter:
+  uses-material-design: true
+
+  # Если вы добавите ассеты (изображения, шрифты), добавьте их здесь
+  # assets:
+  #   - assets/images/
