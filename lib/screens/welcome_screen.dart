@@ -1,3 +1,4 @@
+// lib/screens/welcome_screen.dart
 import 'package:flutter/material.dart';
 import 'package:israeldelcargoapplication/widgets/custom_button.dart';
 
@@ -11,7 +12,7 @@ class WelcomeScreen extends StatelessWidget {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF0D47A1), Color(0xFF1976D2)],
+            colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -51,15 +52,16 @@ class WelcomeScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.pushNamed(context, '/login');
                   },
+                  gradientColors: [Color(0xFFe96443), Color(0xFF904e95)],
                 ),
                 const SizedBox(height: 16.0),
                 CustomButton(
                   text: 'Регистрация',
-                  color: Colors.white,
-                  textColor: const Color(0xFF0D47A1),
                   onPressed: () {
                     Navigator.pushNamed(context, '/registration');
                   },
+                  gradientColors: [Colors.white, Colors.white],
+                  textColor: const Color(0xFF0D47A1),
                 ),
               ],
             ),

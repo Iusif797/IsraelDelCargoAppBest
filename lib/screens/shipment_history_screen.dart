@@ -1,15 +1,15 @@
-// lib/screens/shipments_tab.dart
+// lib/screens/shipment_history_screen.dart
 import 'package:flutter/material.dart';
 import 'package:israeldelcargoapplication/database_helper.dart';
 
-class ShipmentsTab extends StatefulWidget {
-  const ShipmentsTab({Key? key}) : super(key: key);
+class ShipmentHistoryScreen extends StatefulWidget {
+  const ShipmentHistoryScreen({Key? key}) : super(key: key);
 
   @override
-  _ShipmentsTabState createState() => _ShipmentsTabState();
+  _ShipmentHistoryScreenState createState() => _ShipmentHistoryScreenState();
 }
 
-class _ShipmentsTabState extends State<ShipmentsTab> {
+class _ShipmentHistoryScreenState extends State<ShipmentHistoryScreen> {
   late Future<List<Map<String, dynamic>>> _shipmentsFuture;
 
   @override
@@ -24,20 +24,11 @@ class _ShipmentsTabState extends State<ShipmentsTab> {
     });
   }
 
-  void _updateStatus(String trackingNumber) async {
-    // Пример обновления статуса отправления
-    await DatabaseHelper().updateShipmentStatus(trackingNumber, 'В пути');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Статус отправления $trackingNumber обновлен на "В пути"')),
-    );
-    _refreshShipments();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Отправления'),
+        title: const Text('История отправлений'),
         backgroundColor: const Color(0xFF0F2027),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
@@ -73,12 +64,30 @@ class _ShipmentsTabState extends State<ShipmentsTab> {
                         'Статус: ${shipment['status']}',
                         style: const TextStyle(color: Colors.white70),
                       ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.update, color: Colors.white),
-                        onPressed: () {
-                          _updateStatus(shipment['trackingNumber']);
-                        },
-                      ),
+                      trailing: const Icon(Icons.info, color: Colors.white),
+                      onTap: () {
+                        // Здесь можно добавить логику для отображения деталей отправления
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('Отправление ${shipment['trackingNumber']}'),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Тип отправления: ${shipment['productType']}'),
+                                Text('Статус: ${shipment['status']}'),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Закрыть'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   );
                 },

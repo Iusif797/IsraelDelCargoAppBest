@@ -48,12 +48,12 @@ class HelpScreen extends StatelessWidget {
             buildHelpItem(
               icon: Icons.email,
               title: 'Связаться с поддержкой',
-              description: 'Email: IsraelDelCargo@mail.ru',
+              description: 'Email: support@israeldelcargo.com',
             ),
             buildHelpItem(
               icon: Icons.phone,
               title: 'Позвонить нам',
-              description: 'Телефон: +7 991 499-24-20',
+              description: 'Телефон: +1 (234) 567-890',
             ),
           ],
         ),

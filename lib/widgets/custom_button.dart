@@ -1,16 +1,17 @@
+// lib/widgets/custom_button.dart
 import 'package:flutter/material.dart';
 
 class CustomButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
-  final Color color;
+  final List<Color>? gradientColors;
   final Color textColor;
 
   const CustomButton({
     Key? key,
     required this.text,
     required this.onPressed,
-    this.color = const Color(0xFFFFA000),
+    this.gradientColors,
     this.textColor = Colors.white,
   }) : super(key: key);
 
@@ -19,18 +20,42 @@ class CustomButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
+        onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: color,          // Заменили 'primary' на 'backgroundColor'
-          foregroundColor: textColor,      // Заменили 'onPrimary' на 'foregroundColor'
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(30.0),
           ),
+          elevation: 0,
+          backgroundColor: Colors.transparent, // Убираем стандартный цвет
+          shadowColor: Colors.transparent,     // Убираем тень
         ),
-        onPressed: onPressed,
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 18.0),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: gradientColors != null
+                ? LinearGradient(
+                    colors: gradientColors!,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : LinearGradient(
+                    colors: [Colors.orangeAccent, Colors.deepOrange],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+            borderRadius: BorderRadius.circular(30.0),
+          ),
+          child: Container(
+            alignment: Alignment.center,
+            child: Text(
+              text,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 18.0,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
         ),
       ),
     );
