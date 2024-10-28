@@ -1,7 +1,8 @@
 // lib/screens/settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:israeldelcargoapplication/providers/theme_provider.dart';
+import '../providers/theme_provider.dart';
+import '../theme_extensions.dart'; // Импортируем GradientThemeExtension
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -10,6 +11,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     bool isDark = themeProvider.themeMode == ThemeMode.dark;
+    final gradientTheme = Theme.of(context).extension<GradientThemeExtension>()!;
 
     return Scaffold(
       appBar: AppBar(
@@ -17,12 +19,8 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF0F2027),
       ),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+        decoration: BoxDecoration(
+          gradient: gradientTheme.backgroundGradient,
         ),
         child: ListView(
           children: [

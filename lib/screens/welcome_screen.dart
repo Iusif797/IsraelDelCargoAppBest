@@ -1,21 +1,22 @@
 // lib/screens/welcome_screen.dart
 import 'package:flutter/material.dart';
-import 'package:israeldelcargoapplication/widgets/custom_button.dart';
+import '../widgets/custom_button.dart';
+import '../theme_extensions.dart'; // Импортируем GradientThemeExtension
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // Получаем GradientThemeExtension из текущей темы
+    final gradientTheme = Theme.of(context).extension<GradientThemeExtension>()!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      // Используем градиентный фон для современного вида
+      // Используем градиентный фон из темы
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+        decoration: BoxDecoration(
+          gradient: gradientTheme.backgroundGradient,
         ),
         child: SafeArea(
           child: Padding(
@@ -52,7 +53,7 @@ class WelcomeScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.pushNamed(context, '/login');
                   },
-                  gradientColors: [Color(0xFFe96443), Color(0xFF904e95)],
+                  textColor: Colors.white,
                 ),
                 const SizedBox(height: 16.0),
                 CustomButton(
@@ -60,8 +61,7 @@ class WelcomeScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.pushNamed(context, '/registration');
                   },
-                  gradientColors: [Colors.white, Colors.white],
-                  textColor: const Color(0xFF0D47A1),
+                  textColor: isDark ? Colors.black : Colors.blue, // Цвет текста для контраста
                 ),
               ],
             ),

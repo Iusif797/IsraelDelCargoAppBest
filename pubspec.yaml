@@ -1,42 +1,33 @@
 name: israeldelcargoapplication
-description: Приложение для доставки ISRAELDELCARGO
+description: A Flutter application for IsraelDelCargo.
 
-publish_to: 'none' # Удалите эту строку, если планируете публиковать приложение на pub.dev
+publish_to: 'none'
 
 version: 1.0.0+1
 
 environment:
-  sdk: '>=2.17.0 <3.0.0'
+  sdk: ">=2.17.0 <3.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  uuid: ^3.0.6
-  sqflite: ^2.0.0+4
-  path: ^1.8.2
-  provider: ^6.0.0
-  font_awesome_flutter: ^10.1.0
-  crypto: ^3.0.1 # Добавлено для хеширования паролей
-
-  # Другие зависимости вашего приложения могут быть добавлены здесь
-  # Например, если вы используете какие-либо дополнительные пакеты
+  provider: ^6.0.5
+  sqflite: ^2.3.2
+  path: ^1.8.3
+  http: ^1.2.0
+  url_launcher: ^6.2.4
+  intl: ^0.19.0
+  shared_preferences: ^2.2.2
+  flutter_svg: ^2.0.9
+  cupertino_icons: ^1.0.6
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-  # Опционально, если используете генераторы кода или хотите соблюдать правила линтинга
-  # flutter_lints: ^2.0.0
+  flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: true
 
-  # Укажите путь к ассетам, если используете
-  # assets:
-  #   - assets/images/
-
-  # Если вы используете шрифты, укажите их здесь
-  # fonts:
-  #   - family: OpenSans
-  #     fonts:
-  #       - asset: fonts/OpenSans-Regular.ttf
+  assets:
+    - assets/images/logo.png

@@ -1,172 +1,178 @@
 // lib/screens/registration_screen.dart
 import 'package:flutter/material.dart';
-import 'package:israeldelcargoapplication/widgets/custom_button.dart';
-import 'package:israeldelcargoapplication/database_helper.dart';
+import '../database_helper.dart';
+import '../theme_extensions.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({Key? key}) : super(key: key);
-      
+
   @override
   _RegistrationScreenState createState() => _RegistrationScreenState();
 }
-    
+
 class _RegistrationScreenState extends State<RegistrationScreen> {
+  final _formKey = GlobalKey<FormState>();
   String name = '';
   String email = '';
   String password = '';
   bool isLoading = false;
+  String message = '';
 
-  final _formKey = GlobalKey<FormState>(); // Для валидации формы
-      
   @override
   Widget build(BuildContext context) {
+    final gradientTheme = Theme.of(context).extension<GradientThemeExtension>()!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Регистрация'),
+        backgroundColor: const Color(0xFF0F2027),
+      ),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+        decoration: BoxDecoration(
+          gradient: gradientTheme.backgroundGradient,
         ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Card(
-              color: Colors.white.withOpacity(0.85),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20.0),
+        padding: const EdgeInsets.all(24.0),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              const Icon(
+                Icons.person_add,
+                size: 100.0,
+                color: Colors.white,
               ),
-              elevation: 8.0,
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Form(
-                  key: _formKey, // Привязываем форму к ключу
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      const Icon(
-                        Icons.person_add_alt_1,
-                        size: 100.0,
-                        color: Color(0xFF0F2027),
-                      ),
-                      const SizedBox(height: 24.0),
-                      TextFormField(
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.person),
-                          labelText: 'Имя',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
+              const SizedBox(height: 24.0),
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Имя',
+                        labelStyle: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30.0),
                         ),
-                        onChanged: (value) {
-                          name = value;
-                        },
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Пожалуйста, введите имя';
-                          }
-                          return null;
-                        },
+                        filled: true,
+                        fillColor: isDark ? Colors.white.withOpacity(0.2) : Colors.white,
                       ),
-                      const SizedBox(height: 16.0),
-                      TextFormField(
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.email),
-                          labelText: 'Email',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                      onChanged: (value) {
+                        name = value;
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Пожалуйста, введите имя';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16.0),
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        labelStyle: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30.0),
                         ),
-                        onChanged: (value) {
-                          email = value;
-                        },
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Пожалуйста, введите email';
-                          }
-                          // Простая проверка формата email
-                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                            return 'Введите корректный email';
-                          }
-                          return null;
-                        },
+                        filled: true,
+                        fillColor: isDark ? Colors.white.withOpacity(0.2) : Colors.white,
                       ),
-                      const SizedBox(height: 16.0),
-                      TextFormField(
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.lock),
-                          labelText: 'Пароль',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                      keyboardType: TextInputType.emailAddress,
+                      onChanged: (value) {
+                        email = value;
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Пожалуйста, введите email';
+                        }
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                          return 'Введите корректный email';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16.0),
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Пароль',
+                        labelStyle: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30.0),
                         ),
-                        obscureText: true,
-                        onChanged: (value) {
-                          password = value;
-                        },
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Пожалуйста, введите пароль';
-                          }
-                          if (value.length < 6) {
-                            return 'Пароль должен быть не менее 6 символов';
-                          }
-                          return null;
-                        },
+                        filled: true,
+                        fillColor: isDark ? Colors.white.withOpacity(0.2) : Colors.white,
                       ),
-                      const SizedBox(height: 24.0),
-                      isLoading
-                          ? const CircularProgressIndicator()
-                          : CustomButton(
-                              text: 'Зарегистрироваться',
-                              onPressed: () async {
-                                if (_formKey.currentState!.validate()) {
-                                  setState(() {
-                                    isLoading = true;
-                                  });
-                                  try {
-                                    int result = await DatabaseHelper().registerUser(
-                                        name.trim(), email.trim(), password.trim());
-                                    if (result > 0) {
-                                      // Регистрация успешна, переходим на экран входа
-                                      Navigator.pushReplacementNamed(
-                                          context, '/login');
-                                    }
-                                  } catch (e) {
-                                    setState(() {
-                                      isLoading = false;
-                                    });
-                                    // Показать сообщение об ошибке (например, email уже существует)
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Ошибка регистрации: ${e.toString()}')),
-                                    );
-                                  }
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                      obscureText: true,
+                      onChanged: (value) {
+                        password = value;
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Пожалуйста, введите пароль';
+                        }
+                        if (value.length < 6) {
+                          return 'Пароль должен быть не менее 6 символов';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24.0),
+                    isLoading
+                        ? const CircularProgressIndicator()
+                        : ElevatedButton(
+                            onPressed: () async {
+                              if (_formKey.currentState!.validate()) {
+                                setState(() {
+                                  isLoading = true;
+                                  message = '';
+                                });
+                                bool result = await DatabaseHelper().registerUser(
+                                  name.trim(),
+                                  email.trim(),
+                                  password.trim(),
+                                );
+                                setState(() {
+                                  isLoading = false;
+                                  message = result ? 'Регистрация успешна!' : 'Ошибка регистрации. Возможно, email уже существует.';
+                                });
+                                if (result) {
+                                  Navigator.pushNamed(context, '/login');
                                 }
-                              },
-                              gradientColors: [Color(0xFFe96443), Color(0xFF904e95)],
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30.0),
+                              ),
+                              elevation: 5.0,
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
                             ),
-                      const SizedBox(height: 16.0),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/login');
-                        },
-                        child: const Text(
-                          'Уже есть аккаунт? Войти',
-                          style: TextStyle(color: Colors.black54),
-                        ),
+                            child: const Text(
+                              'Зарегистрироваться',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                    const SizedBox(height: 16.0),
+                    Text(
+                      message,
+                      style: TextStyle(
+                        color: message.contains('успешна') ? Colors.green : Colors.red,
+                        fontSize: 16.0,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),

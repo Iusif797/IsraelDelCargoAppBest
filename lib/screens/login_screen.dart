@@ -1,8 +1,9 @@
 // lib/screens/login_screen.dart
 import 'package:flutter/material.dart';
-import 'package:israeldelcargoapplication/widgets/custom_button.dart';
-import 'package:israeldelcargoapplication/database_helper.dart';
-import 'package:israeldelcargoapplication/screens/home_screen.dart';
+import '../widgets/custom_button.dart';
+import '../database_helper.dart';
+import 'home_screen.dart';
+import '../theme_extensions.dart'; // Импортируем GradientThemeExtension
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -19,20 +20,21 @@ class _LoginScreenState extends State<LoginScreen> {
       
   @override
   Widget build(BuildContext context) {
+    // Получаем GradientThemeExtension из текущей темы
+    final gradientTheme = Theme.of(context).extension<GradientThemeExtension>()!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      // Используем градиентный фон из темы
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+        decoration: BoxDecoration(
+          gradient: gradientTheme.backgroundGradient,
         ),
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Card(
-              color: Colors.white.withOpacity(0.85),
+              color: isDark ? Colors.white.withOpacity(0.15) : Colors.white.withOpacity(0.85),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20.0),
               ),
@@ -54,12 +56,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: InputDecoration(
                           prefixIcon: const Icon(Icons.email),
                           labelText: 'Email',
+                          labelStyle: TextStyle(color: isDark ? Colors.white : Colors.black),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30.0),
                           ),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: isDark ? Colors.white.withOpacity(0.2) : Colors.white,
                         ),
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
                         onChanged: (value) {
                           email = value;
                         },
@@ -79,12 +83,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: InputDecoration(
                           prefixIcon: const Icon(Icons.lock),
                           labelText: 'Пароль',
+                          labelStyle: TextStyle(color: isDark ? Colors.white : Colors.black),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30.0),
                           ),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: isDark ? Colors.white.withOpacity(0.2) : Colors.white,
                         ),
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
                         obscureText: true,
                         onChanged: (value) {
                           password = value;
@@ -128,7 +134,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                   }
                                 }
                               },
-                              gradientColors: [Color(0xFFe96443), Color(0xFF904e95)],
                             ),
                       const SizedBox(height: 16.0),
                       TextButton(

@@ -1,6 +1,7 @@
 // lib/screens/shipments_tab.dart
 import 'package:flutter/material.dart';
-import 'package:israeldelcargoapplication/database_helper.dart';
+import '../database_helper.dart';
+import '../theme_extensions.dart';
 
 class ShipmentsTab extends StatefulWidget {
   const ShipmentsTab({Key? key}) : super(key: key);
@@ -18,74 +19,96 @@ class _ShipmentsTabState extends State<ShipmentsTab> {
     _shipmentsFuture = DatabaseHelper().getAllShipments();
   }
 
-  Future<void> _refreshShipments() async {
-    setState(() {
-      _shipmentsFuture = DatabaseHelper().getAllShipments();
-    });
-  }
-
-  void _updateStatus(String trackingNumber) async {
-    // Пример обновления статуса отправления
-    await DatabaseHelper().updateShipmentStatus(trackingNumber, 'В пути');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Статус отправления $trackingNumber обновлен на "В пути"')),
-    );
-    _refreshShipments();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final gradientTheme = Theme.of(context).extension<GradientThemeExtension>()!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Отправления'),
+        title: const Text('Мои отправления'),
         backgroundColor: const Color(0xFF0F2027),
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _shipmentsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Ошибка: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Нет отправлений'));
-          } else {
-            return RefreshIndicator(
-              onRefresh: _refreshShipments,
-              child: ListView.builder(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: gradientTheme.backgroundGradient,
+        ),
+        padding: const EdgeInsets.all(24.0),
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: _shipmentsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(child: Text('Ошибка: ${snapshot.error}'));
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const Center(child: Text('Нет отправлений'));
+            } else {
+              return ListView.builder(
                 itemCount: snapshot.data!.length,
                 itemBuilder: (context, index) {
                   var shipment = snapshot.data![index];
                   return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                    color: Colors.white.withOpacity(0.1),
-                    elevation: 2.0,
+                    color: isDark ? Colors.white.withOpacity(0.15) : Colors.white.withOpacity(0.85),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
+                      borderRadius: BorderRadius.circular(20.0),
                     ),
+                    elevation: 8.0,
                     child: ListTile(
-                      leading: const Icon(Icons.local_shipping, color: Colors.white),
                       title: Text(
-                        'Номер: ${shipment['trackingNumber']}',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        'Отслеживание: ${shipment['trackingNumber']}',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              color: isDark ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                       subtitle: Text(
                         'Статус: ${shipment['status']}',
-                        style: const TextStyle(color: Colors.white70),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
                       ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.update, color: Colors.white),
-                        onPressed: () {
-                          _updateStatus(shipment['trackingNumber']);
+                      trailing: ElevatedButton(
+                        onPressed: () async {
+                          bool updated = await DatabaseHelper().updateShipmentStatus(shipment['trackingNumber'], 'В пути');
+                          if (updated) {
+                            setState(() {
+                              _shipmentsFuture = DatabaseHelper().getAllShipments();
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Статус обновлен')),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Ошибка при обновлении статуса')),
+                            );
+                          }
                         },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20.0),
+                          ),
+                          elevation: 5.0,
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                        ),
+                        child: const Text(
+                          'Обновить статус',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   );
                 },
-              ),
-            );
-          }
-        },
+              );
+            }
+          },
+        ),
       ),
     );
   }

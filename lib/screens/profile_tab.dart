@@ -1,6 +1,7 @@
 // lib/screens/profile_tab.dart
 import 'package:flutter/material.dart';
-import 'help_screen.dart'; // Импортируем HelpScreen
+import 'help_screen.dart'; // Исправленный импорт HelpScreen
+import '../theme_extensions.dart'; // Импортируем GradientThemeExtension
 
 class ProfileTab extends StatelessWidget {
   final String userName;
@@ -16,7 +17,11 @@ class ProfileTab extends StatelessWidget {
     required this.onViewHistory,
   }) : super(key: key);
 
-  Widget buildProfileItem({required IconData icon, required String title, required VoidCallback onTap}) {
+  Widget buildProfileItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
       color: Colors.white.withOpacity(0.1),
@@ -33,35 +38,19 @@ class ProfileTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Обновленный фон
+    final gradientTheme = Theme.of(context).extension<GradientThemeExtension>()!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: double.infinity,
       height: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFF0F2027),
-            Color(0xFF203A43),
-            Color(0xFF2C5364),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
+      decoration: BoxDecoration(
+        gradient: gradientTheme.backgroundGradient,
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.symmetric(vertical: 40.0),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.transparent,
-                  Colors.transparent,
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
             child: Column(
               children: [
                 const CircleAvatar(
@@ -81,7 +70,7 @@ class ProfileTab extends StatelessWidget {
                 const SizedBox(height: 8.0),
                 Text(
                   email,
-                  style: const TextStyle(fontSize: 16.0, color: Colors.white70),
+                  style: TextStyle(fontSize: 16.0, color: isDark ? Colors.white70 : Colors.black54),
                 ),
               ],
             ),

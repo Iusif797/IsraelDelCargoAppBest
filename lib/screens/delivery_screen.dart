@@ -1,16 +1,16 @@
-// lib/screens/shipment_screen.dart
+// lib/screens/delivery_screen.dart
 import 'package:flutter/material.dart';
 import '../database_helper.dart';
 import '../theme_extensions.dart';
 
-class ShipmentScreen extends StatefulWidget {
-  const ShipmentScreen({Key? key}) : super(key: key);
+class DeliveryScreen extends StatefulWidget {
+  const DeliveryScreen({Key? key}) : super(key: key);
 
   @override
-  _ShipmentScreenState createState() => _ShipmentScreenState();
+  _DeliveryScreenState createState() => _DeliveryScreenState();
 }
 
-class _ShipmentScreenState extends State<ShipmentScreen> {
+class _DeliveryScreenState extends State<DeliveryScreen> {
   final _formKey = GlobalKey<FormState>();
   String trackingNumber = '';
   String origin = '';
