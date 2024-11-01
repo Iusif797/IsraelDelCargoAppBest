@@ -50,12 +50,12 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: TextField(
+                  child: const TextField(
                     decoration: InputDecoration(
                       hintText: 'Поиск...',
-                      prefixIcon: const Icon(Icons.search),
+                      prefixIcon: Icon(Icons.search),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 15.0),
+                      contentPadding: EdgeInsets.symmetric(vertical: 15.0),
                     ),
                   ),
                 ),
