@@ -9,7 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:url_launcher/url_launcher.dart'; // Для отправки сообщения в WhatsApp
+import 'package:url_launcher/url_launcher.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +24,7 @@ void main() async {
 
 /// ==================== Models ====================
 
-/// User model
+/// Модель пользователя
 class UserModel {
   final int? id;
   String name;
@@ -57,7 +57,7 @@ class UserModel {
   }
 }
 
-/// CartItem model
+/// Модель элемента корзины
 class CartItem {
   final String serviceName;
   int quantity;
@@ -72,7 +72,7 @@ class CartItem {
   });
 }
 
-/// Shipment model
+/// Модель отправления
 class Shipment {
   final int? id;
   final String trackingNumber;
@@ -107,14 +107,15 @@ class Shipment {
 
 /// ==================== Database Helper ====================
 
-/// DatabaseHelper singleton class
+/// Синглтон класс DatabaseHelper
 class DatabaseHelper {
   DatabaseHelper._privateConstructor();
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
 
   static Database? _database;
 
-  Future<Database> get database async => _database ??= await initDatabase();
+  Future<Database> get database async =>
+      _database ??= await initDatabase();
 
   Future<Database> initDatabase() async {
     String databasesPath = await getDatabasesPath();
@@ -128,7 +129,7 @@ class DatabaseHelper {
     );
   }
 
-  // Create tables
+  // Создание таблиц
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE users(
@@ -166,14 +167,14 @@ class DatabaseHelper {
     ''');
   }
 
-  // Upgrade database to add new fields
+  // Обновление базы данных для добавления новых полей
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 4) {
-      // Implement upgrade logic if necessary
+      // Добавьте логику обновления, если необходимо
     }
   }
 
-  // User CRUD
+  // Пользователь CRUD
   Future<int> addUser(UserModel user) async {
     Database db = await database;
     return await db.insert(
@@ -235,7 +236,7 @@ class DatabaseHelper {
     );
   }
 
-  // Shipment CRUD
+  // Отправление CRUD
   Future<int> addShipment(Shipment shipment) async {
     Database db = await database;
     return await db.insert(
@@ -265,7 +266,7 @@ class DatabaseHelper {
     });
   }
 
-  // Cart CRUD
+  // Корзина CRUD
   Future<int> addToCart(CartItem item) async {
     Database db = await database;
     return await db.insert('cart', {
@@ -297,7 +298,7 @@ class DatabaseHelper {
 
 /// ==================== State Management ====================
 
-/// AppState to manage theme, user, and cart
+/// AppState для управления темой, пользователем и корзиной
 class AppState extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.dark;
   final List<CartItem> _cartItems = [];
@@ -316,7 +317,8 @@ class AppState extends ChangeNotifier {
 
   void addToCart(String serviceName, double price) {
     final trackingNumber = 'TRK${DateTime.now().millisecondsSinceEpoch}';
-    final existingItemIndex = _cartItems.indexWhere((item) => item.serviceName == serviceName);
+    final existingItemIndex =
+        _cartItems.indexWhere((item) => item.serviceName == serviceName);
 
     if (existingItemIndex == -1) {
       _cartItems.add(CartItem(
@@ -402,7 +404,7 @@ class AppState extends ChangeNotifier {
 
 /// ==================== Application Widgets ====================
 
-/// Main Application Widget
+/// Главный виджет приложения
 class IsraelDelCargoApp extends StatelessWidget {
   const IsraelDelCargoApp({Key? key}) : super(key: key);
 
@@ -421,10 +423,10 @@ class IsraelDelCargoApp extends StatelessWidget {
         textTheme: const TextTheme(
           bodyLarge: TextStyle(color: Colors.black),
           bodyMedium: TextStyle(color: Colors.black),
-          headlineLarge:
-              TextStyle(color: Colors.black, fontSize: 24.0, fontWeight: FontWeight.bold),
-          headlineMedium:
-              TextStyle(color: Colors.black, fontSize: 20.0, fontWeight: FontWeight.bold),
+          headlineLarge: TextStyle(
+              color: Colors.black, fontSize: 24.0, fontWeight: FontWeight.bold),
+          headlineMedium: TextStyle(
+              color: Colors.black, fontSize: 20.0, fontWeight: FontWeight.bold),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -446,10 +448,10 @@ class IsraelDelCargoApp extends StatelessWidget {
         textTheme: const TextTheme(
           bodyLarge: TextStyle(color: Colors.white),
           bodyMedium: TextStyle(color: Colors.white),
-          headlineLarge:
-              TextStyle(color: Colors.white, fontSize: 24.0, fontWeight: FontWeight.bold),
-          headlineMedium:
-              TextStyle(color: Colors.white, fontSize: 20.0, fontWeight: FontWeight.bold),
+          headlineLarge: TextStyle(
+              color: Colors.white, fontSize: 24.0, fontWeight: FontWeight.bold),
+          headlineMedium: TextStyle(
+              color: Colors.white, fontSize: 20.0, fontWeight: FontWeight.bold),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -468,7 +470,7 @@ class IsraelDelCargoApp extends StatelessWidget {
   }
 }
 
-/// Wrapper to decide which screen to show based on authentication
+/// Обертка для определения, какой экран показать в зависимости от аутентификации
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({Key? key}) : super(key: key);
 
@@ -658,15 +660,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: InputDecoration(
                           labelText: 'Email',
                           filled: true,
-                          fillColor:
-                              isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                          fillColor: isDark
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.grey.shade200,
                           prefixIcon: const Icon(Icons.email),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30),
                             borderSide: BorderSide.none,
                           ),
                         ),
-                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        style:
+                            TextStyle(color: isDark ? Colors.white : Colors.black),
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null ||
@@ -684,15 +688,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: InputDecoration(
                           labelText: 'Пароль',
                           filled: true,
-                          fillColor:
-                              isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                          fillColor: isDark
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.grey.shade200,
                           prefixIcon: const Icon(Icons.lock),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30),
                             borderSide: BorderSide.none,
                           ),
                         ),
-                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        style:
+                            TextStyle(color: isDark ? Colors.white : Colors.black),
                         obscureText: true,
                         validator: (value) {
                           if (value == null || value.length < 6) {
@@ -720,8 +726,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: _navigateToSignup,
                         child: Text(
                           'Нет учетной записи? Зарегистрируйтесь',
-                          style: TextStyle(
-                              color: isDark ? Colors.white : Colors.blue),
+                          style:
+                              TextStyle(color: isDark ? Colors.white : Colors.blue),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -736,8 +742,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 8),
                       Text(
                         'Войти с помощью Face ID',
-                        style: TextStyle(
-                            color: isDark ? Colors.white : Colors.blue),
+                        style:
+                            TextStyle(color: isDark ? Colors.white : Colors.blue),
                       ),
                     ],
                   ),
@@ -846,21 +852,23 @@ class _SignupScreenState extends State<SignupScreen> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      // Name Field
+                      // Поле имени
                       TextFormField(
                         controller: _nameController,
                         decoration: InputDecoration(
                           labelText: 'Имя',
                           filled: true,
-                          fillColor:
-                              isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                          fillColor: isDark
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.grey.shade200,
                           prefixIcon: const Icon(Icons.person),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30),
                             borderSide: BorderSide.none,
                           ),
                         ),
-                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        style:
+                            TextStyle(color: isDark ? Colors.white : Colors.black),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Пожалуйста, введите имя';
@@ -869,21 +877,23 @@ class _SignupScreenState extends State<SignupScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      // Email Field
+                      // Поле Email
                       TextFormField(
                         controller: _emailController,
                         decoration: InputDecoration(
                           labelText: 'Email',
                           filled: true,
-                          fillColor:
-                              isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                          fillColor: isDark
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.grey.shade200,
                           prefixIcon: const Icon(Icons.email),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30),
                             borderSide: BorderSide.none,
                           ),
                         ),
-                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        style:
+                            TextStyle(color: isDark ? Colors.white : Colors.black),
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null ||
@@ -895,14 +905,15 @@ class _SignupScreenState extends State<SignupScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      // Phone Field
+                      // Поле телефона
                       TextFormField(
                         controller: _phoneController,
                         decoration: InputDecoration(
                           labelText: 'Номер телефона',
                           filled: true,
-                          fillColor:
-                              isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                          fillColor: isDark
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.grey.shade200,
                           prefixIcon: const Icon(Icons.phone),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30),
@@ -910,7 +921,8 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                         ),
                         keyboardType: TextInputType.phone,
-                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        style:
+                            TextStyle(color: isDark ? Colors.white : Colors.black),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Пожалуйста, введите номер телефона';
@@ -922,21 +934,23 @@ class _SignupScreenState extends State<SignupScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      // Address Field
+                      // Поле адреса
                       TextFormField(
                         controller: _addressController,
                         decoration: InputDecoration(
                           labelText: 'Адрес',
                           filled: true,
-                          fillColor:
-                              isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                          fillColor: isDark
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.grey.shade200,
                           prefixIcon: const Icon(Icons.home),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30),
                             borderSide: BorderSide.none,
                           ),
                         ),
-                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        style:
+                            TextStyle(color: isDark ? Colors.white : Colors.black),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Пожалуйста, введите адрес';
@@ -945,21 +959,23 @@ class _SignupScreenState extends State<SignupScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      // Password Field
+                      // Поле пароля
                       TextFormField(
                         controller: _passwordController,
                         decoration: InputDecoration(
                           labelText: 'Пароль',
                           filled: true,
-                          fillColor:
-                              isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                          fillColor: isDark
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.grey.shade200,
                           prefixIcon: const Icon(Icons.lock),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(30),
                             borderSide: BorderSide.none,
                           ),
                         ),
-                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        style:
+                            TextStyle(color: isDark ? Colors.white : Colors.black),
                         obscureText: true,
                         validator: (value) {
                           if (value == null || value.length < 6) {
@@ -1054,7 +1070,7 @@ class _MainPageState extends State<MainPage> {
               leading: const Icon(Icons.info),
               title: const Text('О нас'),
               onTap: () {
-                Navigator.pop(context); // Закрываем Drawer
+                Navigator.pop(context); // Close the drawer
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const AboutUsScreen()),
@@ -1174,11 +1190,11 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   Widget _buildMainButton(
-      BuildContext context, String text, IconData icon, Widget screen) {
+      BuildContext context, String text, IconData icon, VoidCallback onPressed) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: ElevatedButton.icon(
-        onPressed: () => _navigateTo(context, screen),
+        onPressed: onPressed,
         icon: Icon(icon, size: 24, color: Colors.white),
         label: Text(text, style: const TextStyle(fontSize: 16)),
         style: ElevatedButton.styleFrom(
@@ -1241,14 +1257,13 @@ class _HomeContentState extends State<HomeContent> {
 
   void _calculateTotal(BuildContext context) {
     if (_formKey.currentState!.validate()) {
-      final appState = Provider.of<AppState>(context, listen: false);
-      double cartTotal = 0.0;
-      for (var item in appState.cartItems) {
-        cartTotal += item.price * item.quantity;
-      }
-
       double weight = double.parse(_weightController.text.trim());
-      double deliveryCost = weight * 500.0; // 500 ₽ per kg
+      double deliveryCost = weight * 500.0; // 500 ₽ за кг
+
+      final appState = Provider.of<AppState>(context, listen: false);
+      double cartTotal = appState.cartItems.fold(0.0,
+          (sum, item) => sum + item.price * item.quantity);
+
       double total = cartTotal + deliveryCost;
 
       showDialog(
@@ -1265,6 +1280,15 @@ class _HomeContentState extends State<HomeContent> {
         ),
       );
     }
+  }
+
+  void _showApplicationForm(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return ApplicationFormDialog();
+      },
+    );
   }
 
   @override
@@ -1289,641 +1313,217 @@ class _HomeContentState extends State<HomeContent> {
             end: Alignment.bottomRight,
           ),
         ),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Hero(
-                  tag: 'logo',
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    width: 120,
-                    height: 120,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'ISRAELDELCARGO',
-                style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              // Country of Origin and Destination
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        labelText: 'Страна отправления',
-                        filled: true,
-                        fillColor: isDark
-                            ? Colors.white.withOpacity(0.2)
-                            : Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'Россия',
-                          child: Text('Россия'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Израиль',
-                          child: Text('Израиль'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Грузия',
-                          child: Text('Грузия'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Казахстан',
-                          child: Text('Казахстан'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _countryOrigin = value;
-                        });
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Выберите страну отправления';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        labelText: 'Страна назначения',
-                        filled: true,
-                        fillColor: isDark
-                            ? Colors.white.withOpacity(0.2)
-                            : Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'Россия',
-                          child: Text('Россия'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Израиль',
-                          child: Text('Израиль'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Грузия',
-                          child: Text('Грузия'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Казахстан',
-                          child: Text('Казахстан'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _countryDestination = value;
-                        });
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Выберите страну назначения';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Weight Input
-              TextFormField(
-                controller: _weightController,
-                decoration: InputDecoration(
-                  labelText: 'Вес (кг)',
-                  filled: true,
-                  fillColor:
-                      isDark ? Colors.white.withOpacity(0.2) : Colors.white,
-                  prefixIcon: const Icon(Icons.line_weight),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-                style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Пожалуйста, введите вес';
-                  }
-                  if (double.tryParse(value) == null ||
-                      double.parse(value) <= 0) {
-                    return 'Пожалуйста, введите корректный вес';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              // Calculate Button
-              ElevatedButton(
-                onPressed: () => _calculateTotal(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1C3D5A),
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 4,
-                ),
-                child: const Text(
-                  'Рассчитать',
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
-              const SizedBox(height: 24),
-              // Vertical buttons
-              _buildMainButton(
-                context,
-                'Оформить доставку',
-                Icons.local_shipping,
-                const DeliveryScreen(),
-              ),
-              _buildMainButton(
-                context,
-                'Отследить',
-                Icons.track_changes,
-                const TrackingTab(),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Выберите услугу',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: services.length,
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 3 / 4,
-                ),
-                itemBuilder: (context, index) {
-                  return _buildServiceCard(context, services[index]);
-                },
-              ),
-              const SizedBox(height: 24),
-              Card(
-                color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.blue.shade50,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 4,
-                child: const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
-                    'Мы предлагаем надежные и быстрые услуги доставки для ваших нужд.',
-                    style: TextStyle(fontSize: 16),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Profile Screen with Improved Design
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
-
-  @override
-  _ProfileScreenState createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
-  File? _avatarImageFile;
-  bool _isEditing = false;
-
-  final ImagePicker _picker = ImagePicker();
-
-  @override
-  void initState() {
-    super.initState();
-    final appState = Provider.of<AppState>(context, listen: false);
-    if (appState.currentUser != null) {
-      _nameController.text = appState.currentUser!.name;
-      _emailController.text = appState.currentUser!.email;
-      _phoneController.text = appState.currentUser!.phone;
-      _addressController.text = appState.currentUser!.address;
-    }
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final pickedFile =
-          await _picker.pickImage(source: source, maxWidth: 600, maxHeight: 600);
-      if (pickedFile != null) {
-        setState(() {
-          _avatarImageFile = File(pickedFile.path);
-        });
-      }
-    } catch (e) {
-      // Обработка ошибок
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка при выборе изображения: $e')),
-      );
-    }
-  }
-
-  void _showImageSourceActionSheet() {
-    showModalBottomSheet(
-      context: context,
-      builder: (builderContext) {
-        return SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Выбрать из галереи'),
-                onTap: () {
-                  Navigator.of(builderContext).pop();
-                  _pickImage(ImageSource.gallery);
-                  setState(() {
-                    _isEditing = true;
-                  });
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text('Сделать фото'),
-                onTap: () {
-                  Navigator.of(builderContext).pop();
-                  _pickImage(ImageSource.camera);
-                  setState(() {
-                    _isEditing = true;
-                  });
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final appState = Provider.of<AppState>(context, listen: false);
-
-    await appState.updateUserProfile(
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      phone: _phoneController.text.trim(),
-      address: _addressController.text.trim(),
-      avatarPath: _avatarImageFile?.path,
-    );
-
-    setState(() {
-      _isEditing = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Профиль обновлен успешно')),
-    );
-  }
-
-  void _confirmLogout() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Подтверждение выхода'),
-        content: const Text('Вы уверены, что хотите выйти из аккаунта?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _logout();
-            },
-            child: const Text(
-              'Выйти',
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _logout() async {
-    final appState = Provider.of<AppState>(context, listen: false);
-    await appState.logout();
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (appState.currentUser == null) {
-      return const Center(child: Text('Нет доступа'));
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Профиль'),
-        backgroundColor: const Color(0xFF1C3D5A),
-        actions: [
-          IconButton(
-            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
-            onPressed: () {
-              appState.toggleTheme(!appState.isDarkMode);
-            },
-          ),
-        ],
-      ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity, // Добавлено для полного экрана
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              isDark ? const Color(0xFF0A1929) : Colors.white,
-              isDark ? const Color(0xFF1C3D5A) : Colors.blue.shade100,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: _isEditing ? _buildEditProfileForm() : _buildProfileView(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileView() {
-    final appState = Provider.of<AppState>(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          const SizedBox(height: 30),
-          GestureDetector(
-            onTap: () {
-              _showImageSourceActionSheet();
-            },
-            child: CircleAvatar(
-              radius: 60,
-              backgroundColor: const Color(0xFF1C3D5A),
-              backgroundImage: _avatarImageFile != null
-                  ? FileImage(_avatarImageFile!)
-                  : (appState.currentUser!.avatarPath != null
-                      ? FileImage(File(appState.currentUser!.avatarPath!))
-                      : null),
-              child: _avatarImageFile == null &&
-                      appState.currentUser!.avatarPath == null
-                  ? const Icon(
-                      Icons.person,
-                      size: 60,
-                      color: Colors.white,
-                    )
-                  : null,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            appState.currentUser!.name,
-            style: const TextStyle(
-                fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            appState.currentUser!.email,
-            style: const TextStyle(fontSize: 16, color: Colors.white70),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            appState.currentUser!.phone,
-            style: const TextStyle(fontSize: 16, color: Colors.white70),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            appState.currentUser!.address,
-            style: const TextStyle(fontSize: 16, color: Colors.white70),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () {
-              setState(() {
-                _isEditing = true;
-              });
-            },
-            icon: const Icon(Icons.edit),
-            label: const Text('Редактировать профиль'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1C3D5A),
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 4,
-            ),
-          ),
-          const SizedBox(height: 8),
-          ElevatedButton.icon(
-            onPressed: _confirmLogout,
-            icon: const Icon(Icons.logout),
-            label: const Text('Выйти'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEditProfileForm() {
-    final appState = Provider.of<AppState>(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 30),
-            GestureDetector(
-              onTap: _showImageSourceActionSheet,
-              child: CircleAvatar(
-                radius: 60,
-                backgroundColor: const Color(0xFF1C3D5A),
-                backgroundImage: _avatarImageFile != null
-                    ? FileImage(_avatarImageFile!)
-                    : (appState.currentUser!.avatarPath != null
-                        ? FileImage(File(appState.currentUser!.avatarPath!))
-                        : null),
-                child: _avatarImageFile == null &&
-                        appState.currentUser!.avatarPath == null
-                    ? const Icon(
-                        Icons.person,
-                        size: 60,
-                        color: Colors.white,
-                      )
-                    : null,
+            Center(
+              child: Hero(
+                tag: 'logo',
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 120,
+                  height: 120,
+                ),
               ),
             ),
             const SizedBox(height: 16),
+            Text(
+              'ISRAELDELCARGO',
+              style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            // Вертикальные кнопки
+            _buildMainButton(
+              context,
+              'Оформить заявку',
+              Icons.assignment,
+              () => _showApplicationForm(context),
+            ),
+            _buildMainButton(
+              context,
+              'Отследить',
+              Icons.track_changes,
+              () => _navigateTo(context, const TrackingTab()),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Выберите услугу',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: services.length,
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 3 / 4,
+              ),
+              itemBuilder: (context, index) {
+                return _buildServiceCard(context, services[index]);
+              },
+            ),
+            const SizedBox(height: 24),
+            Card(
+              color:
+                  isDark ? Colors.white.withOpacity(0.1) : Colors.blue.shade50,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 4,
+              child: const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'Мы предлагаем надежные и быстрые услуги доставки для ваших нужд.',
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
             Form(
               key: _formKey,
               child: Column(
                 children: [
-                  // Name Field
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: InputDecoration(
-                      labelText: 'Имя',
-                      filled: true,
-                      fillColor:
-                          isDark ? Colors.white.withOpacity(0.2) : Colors.white,
-                      prefixIcon: const Icon(Icons.person),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
+                  // Страна отправления и назначения
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          decoration: InputDecoration(
+                            labelText: 'Страна отправления',
+                            filled: true,
+                            fillColor: isDark
+                                ? Colors.white.withOpacity(0.2)
+                                : Colors.grey.shade200,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'Россия',
+                              child: Text('Россия'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Израиль',
+                              child: Text('Израиль'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Грузия',
+                              child: Text('Грузия'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Казахстан',
+                              child: Text('Казахстан'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _countryOrigin = value;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Выберите страну отправления';
+                            }
+                            return null;
+                          },
+                        ),
                       ),
-                    ),
-                    style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Пожалуйста, введите имя';
-                      }
-                      return null;
-                    },
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          decoration: InputDecoration(
+                            labelText: 'Страна назначения',
+                            filled: true,
+                            fillColor: isDark
+                                ? Colors.white.withOpacity(0.2)
+                                : Colors.grey.shade200,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'Россия',
+                              child: Text('Россия'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Израиль',
+                              child: Text('Израиль'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Грузия',
+                              child: Text('Грузия'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Казахстан',
+                              child: Text('Казахстан'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _countryDestination = value;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Выберите страну назначения';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
-                  // Email Field
+                  // Поле ввода веса
                   TextFormField(
-                    controller: _emailController,
+                    controller: _weightController,
                     decoration: InputDecoration(
-                      labelText: 'Email',
+                      labelText: 'Вес (кг)',
                       filled: true,
-                      fillColor:
-                          isDark ? Colors.white.withOpacity(0.2) : Colors.white,
-                      prefixIcon: const Icon(Icons.email),
+                      fillColor: isDark
+                          ? Colors.white.withOpacity(0.2)
+                          : Colors.grey.shade200,
+                      prefixIcon: const Icon(Icons.line_weight),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
                         borderSide: BorderSide.none,
                       ),
                     ),
-                    style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null ||
-                          value.isEmpty ||
-                          !value.contains('@')) {
-                        return 'Пожалуйста, введите корректный email';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  // Phone Field
-                  TextFormField(
-                    controller: _phoneController,
-                    decoration: InputDecoration(
-                      labelText: 'Номер телефона',
-                      filled: true,
-                      fillColor:
-                          isDark ? Colors.white.withOpacity(0.2) : Colors.white,
-                      prefixIcon: const Icon(Icons.phone),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    keyboardType: TextInputType.phone,
-                    style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                    keyboardType: TextInputType.number,
+                    style:
+                        TextStyle(color: isDark ? Colors.white : Colors.black),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Пожалуйста, введите номер телефона';
+                        return 'Пожалуйста, введите вес';
                       }
-                      if (!RegExp(r'^\+?\d{7,15}$').hasMatch(value)) {
-                        return 'Пожалуйста, введите корректный номер телефона';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  // Address Field
-                  TextFormField(
-                    controller: _addressController,
-                    decoration: InputDecoration(
-                      labelText: 'Адрес',
-                      filled: true,
-                      fillColor:
-                          isDark ? Colors.white.withOpacity(0.2) : Colors.white,
-                      prefixIcon: const Icon(Icons.home),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Пожалуйста, введите адрес';
+                      if (double.tryParse(value) == null ||
+                          double.parse(value) <= 0) {
+                        return 'Пожалуйста, введите корректный вес';
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 24),
+                  // Кнопка "Рассчитать"
                   ElevatedButton(
-                    onPressed: _saveProfile,
+                    onPressed: () => _calculateTotal(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF1C3D5A),
                       padding: const EdgeInsets.symmetric(
@@ -1934,13 +1534,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       elevation: 4,
                     ),
                     child: const Text(
-                      'Сохранить',
+                      'Рассчитать',
                       style: TextStyle(fontSize: 16),
                     ),
                   ),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -1992,29 +1592,13 @@ class TrackingTab extends StatelessWidget {
 class CartScreen extends StatelessWidget {
   const CartScreen({Key? key}) : super(key: key);
 
-  Future<void> _submitApplication(BuildContext context) async {
-    final appState = Provider.of<AppState>(context, listen: false);
-    final total = appState.cartItems.fold(
-      0.0,
-      (sum, item) => sum + item.price * item.quantity,
+  void _showApplicationForm(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return ApplicationFormDialog();
+      },
     );
-    final message = Uri.encodeComponent(
-      'Здравствуйте! Я хочу оформить заявку на следующие услуги:\n' +
-          appState.cartItems
-              .map((item) => '- ${item.serviceName} x${item.quantity}')
-              .join('\n') +
-          '\nИтого: $total ₽',
-    );
-    final phoneNumber = '79914992420';
-    final url = 'https://wa.me/$phoneNumber?text=$message';
-
-    if (await canLaunch(url)) {
-      await launch(url);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Не удалось открыть WhatsApp')),
-      );
-    }
   }
 
   @override
@@ -2055,7 +1639,9 @@ class CartScreen extends StatelessWidget {
                   onLongPress: () {
                     appState.removeFromCart(item.serviceName);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${item.serviceName} удалено из корзины')),
+                      SnackBar(
+                          content:
+                              Text('${item.serviceName} удалено из корзины')),
                     );
                   },
                 );
@@ -2069,35 +1655,318 @@ class CartScreen extends StatelessWidget {
           style: const TextStyle(fontSize: 18, color: Colors.white),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _submitApplication(context),
-        label: const Text('Оформить заявку'),
-        icon: const Icon(Icons.send),
-        backgroundColor: const Color(0xFF1C3D5A),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: appState.cartItems.isEmpty
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => _showApplicationForm(context),
+              label: const Text('Оформить заявку'),
+              icon: const Icon(Icons.assignment),
+              backgroundColor: const Color(0xFF1C3D5A),
+            ),
+      floatingActionButtonLocation:
+          FloatingActionButtonLocation.centerFloat,
     );
   }
 }
 
-/// Delivery Screen Placeholder
-class DeliveryScreen extends StatelessWidget {
-  const DeliveryScreen({Key? key}) : super(key: key);
+/// Application Form Dialog
+class ApplicationFormDialog extends StatefulWidget {
+  @override
+  _ApplicationFormDialogState createState() => _ApplicationFormDialogState();
+}
+
+class _ApplicationFormDialogState extends State<ApplicationFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  String? _selectedProduct;
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
+  String? _originCountry;
+  String? _destinationCountry;
+  final _descriptionController = TextEditingController();
+
+  final List<String> countries = [
+    'Россия',
+    'Израиль',
+    'Грузия',
+    'Казахстан',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final appState = Provider.of<AppState>(context, listen: false);
+    if (appState.currentUser != null) {
+      _nameController.text = appState.currentUser!.name;
+      _phoneController.text = appState.currentUser!.phone;
+      _emailController.text = appState.currentUser!.email;
+    }
+  }
+
+  void _sendApplication(BuildContext context) async {
+    if (_formKey.currentState!.validate()) {
+      final appState = Provider.of<AppState>(context, listen: false);
+      double total = appState.cartItems.fold(
+        0.0,
+        (sum, item) => sum + item.price * item.quantity,
+      );
+
+      final message = Uri.encodeComponent(
+        'Здравствуйте!\n'
+        'Я хочу оформить заявку на услугу: $_selectedProduct\n'
+        'Имя: ${_nameController.text}\n'
+        'Телефон: ${_phoneController.text}\n'
+        'Email: ${_emailController.text}\n'
+        'Страна отправления: $_originCountry\n'
+        'Страна прибытия: $_destinationCountry\n'
+        'Описание: ${_descriptionController.text}\n'
+        'Итого к оплате: $total ₽',
+      );
+      final phoneNumber = '79914992420';
+      final url = 'https://wa.me/$phoneNumber?text=$message';
+
+      if (await canLaunch(url)) {
+        await launch(url);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось открыть WhatsApp')),
+        );
+      }
+    }
+  }
+
+  void _makePayment(BuildContext context) async {
+    final appState = Provider.of<AppState>(context, listen: false);
+    double total = appState.cartItems.fold(
+      0.0,
+      (sum, item) => sum + item.price * item.quantity,
+    );
+
+    final url =
+        'https://www.tbank.ru/rm/rabaev.natan1/qBQMJ15331/?amount=$total';
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось открыть ссылку для оплаты')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Реализуйте логику оформления доставки здесь
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Оформить доставку'),
-        backgroundColor: const Color(0xFF1C3D5A),
-      ),
-      body: Center(
-        child: const Text(
-          'Тут будет экран оформления доставки.',
-          style: TextStyle(fontSize: 18),
+    final appState = Provider.of<AppState>(context);
+    final products = appState.cartItems.isNotEmpty
+        ? appState.cartItems.map((item) => item.serviceName).toList()
+        : [
+            'Доставка документов',
+            'Религиозные атрибуты (книги, иудайка)',
+            'Одежда, обувь, головные уборы',
+            'Кошерное питание',
+            'Товары из Duty Free',
+            'Маленькие посылки (до 1кг)',
+          ];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AlertDialog(
+      title: const Text('Оформление заявки'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              // Выбор товара
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Выбор товара',
+                  filled: true,
+                  fillColor:
+                      isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                items: products
+                    .map((product) => DropdownMenuItem(
+                          value: product,
+                          child: Text(product),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedProduct = value;
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Выберите товар';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              // Поле имени
+              TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'Имя',
+                  filled: true,
+                  fillColor:
+                      isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                  prefixIcon: const Icon(Icons.person),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Введите имя';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              // Поле телефона
+              TextFormField(
+                controller: _phoneController,
+                decoration: InputDecoration(
+                  labelText: 'Номер телефона',
+                  filled: true,
+                  fillColor:
+                      isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                  prefixIcon: const Icon(Icons.phone),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Введите номер телефона';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              // Поле Email
+              TextFormField(
+                controller: _emailController,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  filled: true,
+                  fillColor:
+                      isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                  prefixIcon: const Icon(Icons.email),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null ||
+                      value.isEmpty ||
+                      !value.contains('@')) {
+                    return 'Введите корректный email';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              // Страна отправления
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Страна отправления',
+                  filled: true,
+                  fillColor:
+                      isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                items: countries
+                    .map((country) => DropdownMenuItem(
+                          value: country,
+                          child: Text(country),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _originCountry = value;
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Выберите страну отправления';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              // Страна прибытия
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Страна прибытия',
+                  filled: true,
+                  fillColor:
+                      isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                items: countries
+                    .map((country) => DropdownMenuItem(
+                          value: country,
+                          child: Text(country),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _destinationCountry = value;
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Выберите страну прибытия';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              // Описание
+              TextFormField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  labelText: 'Описание',
+                  filled: true,
+                  fillColor:
+                      isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => _makePayment(context),
+          child: const Text('Оплатить'),
+        ),
+        ElevatedButton(
+          onPressed: () => _sendApplication(context),
+          child: const Text('Отправить заявку'),
+        ),
+      ],
     );
   }
 }
@@ -2116,7 +1985,284 @@ class AboutUsScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF1C3D5A),
       ),
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              isDark ? const Color(0xFF0A1929) : Colors.white,
+              isDark ? const Color(0xFF1C3D5A) : Colors.blue.shade100,
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
         padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              const SizedBox(height: 24),
+              Text(
+                'ISRAELDELCARGO',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Card(
+                color: isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.blue.shade50,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'ISRAELDELCARGO - ваш надежный партнер в доставке товаров и документов между Россией, Израилем, Грузией и Казахстаном. Мы предлагаем быстрые и надежные услуги доставки для ваших нужд.',
+                        style: TextStyle(fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ListTile(
+                        leading: const Icon(Icons.location_on),
+                        title:
+                            const Text('Москва, Олимпийский просп., 22'),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.phone),
+                        title: const Text(
+                            'Рабочий WhatsApp: +7 (991) 499-24-20'),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.telegram),
+                        title:
+                            const Text('Рабочий Telegram: @israeldelcargo'),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          const phoneNumber = '79914992420';
+                          final url = 'https://wa.me/$phoneNumber';
+                          if (await canLaunch(url)) {
+                            await launch(url);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content:
+                                      Text('Не удалось открыть WhatsApp')),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.chat),
+                        label: const Text('Связаться через WhatsApp'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1C3D5A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Profile Screen
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({Key? key}) : super(key: key);
+
+  void _logout(BuildContext context) {
+    final appState = Provider.of<AppState>(context, listen: false);
+    appState.logout();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    );
+  }
+
+  void _editProfile(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final user = appState.currentUser;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Профиль'),
+        backgroundColor: const Color(0xFF1C3D5A),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'edit') {
+                _editProfile(context);
+              } else if (value == 'logout') {
+                _logout(context);
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Text('Редактировать профиль'),
+              ),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Text('Выйти'),
+              ),
+            ],
+          ),
+        ],
+      ),
+      body: user == null
+          ? const Center(
+              child: Text('Пользователь не найден'),
+            )
+          : Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    isDark ? const Color(0xFF0A1929) : Colors.white,
+                    isDark ? const Color(0xFF1C3D5A) : Colors.blue.shade100,
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  const SizedBox(height: 24),
+                  CircleAvatar(
+                    radius: 60,
+                    backgroundImage: user.avatarPath != null
+                        ? FileImage(File(user.avatarPath!)) as ImageProvider
+                        : const AssetImage('assets/images/avatar.png'),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    user.name,
+                    style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    user.email,
+                    style: TextStyle(
+                        fontSize: 18,
+                        color: isDark ? Colors.white70 : Colors.black54),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    user.phone,
+                    style: TextStyle(
+                        fontSize: 18,
+                        color: isDark ? Colors.white70 : Colors.black54),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    user.address,
+                    style: TextStyle(
+                        fontSize: 18,
+                        color: isDark ? Colors.white70 : Colors.black54),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+/// Edit Profile Screen
+class EditProfileScreen extends StatefulWidget {
+  const EditProfileScreen({Key? key}) : super(key: key);
+
+  @override
+  _EditProfileScreenState createState() =>
+      _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends State<EditProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController(); // New field
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController(); // New field
+  final _addressController = TextEditingController(); // New field
+  String? _avatarPath;
+
+  @override
+  void initState() {
+    super.initState();
+    final appState = Provider.of<AppState>(context, listen: false);
+    final user = appState.currentUser;
+    if (user != null) {
+      _nameController.text = user.name;
+      _emailController.text = user.email;
+      _phoneController.text = user.phone;
+      _addressController.text = user.address;
+      _avatarPath = user.avatarPath;
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final appState = Provider.of<AppState>(context, listen: false);
+    await appState.updateUserProfile(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      phone: _phoneController.text.trim(),
+      address: _addressController.text.trim(),
+      avatarPath: _avatarPath,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Профиль обновлен')),
+    );
+    Navigator.pop(context);
+  }
+
+  Future<void> _pickAvatar() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery, imageQuality: 50);
+    if (pickedFile != null) {
+      setState(() {
+        _avatarPath = pickedFile.path;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Редактировать профиль'),
+        backgroundColor: const Color(0xFF1C3D5A),
+      ),
+      body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -2127,49 +2273,150 @@ class AboutUsScreen extends StatelessWidget {
             end: Alignment.bottomRight,
           ),
         ),
+        padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
           child: Column(
             children: [
-              Text(
-                'ISraelDelCargo',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black,
+              GestureDetector(
+                onTap: _pickAvatar,
+                child: CircleAvatar(
+                  radius: 60,
+                  backgroundImage: _avatarPath != null
+                      ? FileImage(File(_avatarPath!)) as ImageProvider
+                      : const AssetImage('assets/images/avatar.png'),
+                  child: const Icon(Icons.camera_alt, size: 30, color: Colors.white),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Москва, Олимпийский просп., 22',
-                style: TextStyle(fontSize: 18),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Рабочий WhatsApp: +7 (991) 499-24-20',
-                style: TextStyle(fontSize: 18),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Рабочий Telegram: @israeldelcargo',
-                style: TextStyle(fontSize: 18),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  const phoneNumber = '79914992420';
-                  const url = 'https://wa.me/$phoneNumber';
-                  if (await canLaunch(url)) {
-                    await launch(url);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Не удалось открыть WhatsApp')),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.chat),
-                label: const Text('Связаться через WhatsApp'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1C3D5A),
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    // Name Field
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Имя',
+                        filled: true,
+                        fillColor: isDark
+                            ? Colors.white.withOpacity(0.2)
+                            : Colors.grey.shade200,
+                        prefixIcon: const Icon(Icons.person),
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      style:
+                          TextStyle(color: isDark ? Colors.white : Colors.black),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Пожалуйста, введите имя';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // Email Field
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        filled: true,
+                        fillColor: isDark
+                            ? Colors.white.withOpacity(0.2)
+                            : Colors.grey.shade200,
+                        prefixIcon: const Icon(Icons.email),
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      style:
+                          TextStyle(color: isDark ? Colors.white : Colors.black),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null ||
+                            value.isEmpty ||
+                            !value.contains('@')) {
+                          return 'Пожалуйста, введите корректный email';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // Phone Field
+                    TextFormField(
+                      controller: _phoneController,
+                      decoration: InputDecoration(
+                        labelText: 'Номер телефона',
+                        filled: true,
+                        fillColor: isDark
+                            ? Colors.white.withOpacity(0.2)
+                            : Colors.grey.shade200,
+                        prefixIcon: const Icon(Icons.phone),
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      keyboardType: TextInputType.phone,
+                      style:
+                          TextStyle(color: isDark ? Colors.white : Colors.black),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Пожалуйста, введите номер телефона';
+                        }
+                        if (!RegExp(r'^\+?\d{7,15}$')
+                            .hasMatch(value)) {
+                          return 'Пожалуйста, введите корректный номер телефона';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // Address Field
+                    TextFormField(
+                      controller: _addressController,
+                      decoration: InputDecoration(
+                        labelText: 'Адрес',
+                        filled: true,
+                        fillColor: isDark
+                            ? Colors.white.withOpacity(0.2)
+                            : Colors.grey.shade200,
+                        prefixIcon: const Icon(Icons.home),
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      style:
+                          TextStyle(color: isDark ? Colors.white : Colors.black),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Пожалуйста, введите адрес';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: _saveProfile,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 15, horizontal: 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(30),
+                        ),
+                      ),
+                      child: const Text('Сохранить'),
+                    ),
+                  ],
                 ),
               ),
             ],
