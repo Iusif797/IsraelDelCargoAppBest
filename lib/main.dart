@@ -11,6 +11,12 @@ import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+
+// Добавляем импорты для flutter_map и latlong2
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseHelper.instance.initDatabase();
@@ -114,8 +120,7 @@ class DatabaseHelper {
 
   static Database? _database;
 
-  Future<Database> get database async =>
-      _database ??= await initDatabase();
+  Future<Database> get database async => _database ??= await initDatabase();
 
   Future<Database> initDatabase() async {
     String databasesPath = await getDatabasesPath();
@@ -1054,6 +1059,7 @@ class _MainPageState extends State<MainPage> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
+            // Drawer Header
             DrawerHeader(
               decoration: const BoxDecoration(
                 color: Color(0xFF1C3D5A),
@@ -1066,11 +1072,24 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
             ),
+            // Пункт "Карта"
+            ListTile(
+              leading: const Icon(Icons.map),
+              title: const Text('Карта'),
+              onTap: () {
+                Navigator.pop(context); // Закрыть меню
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MapScreen()),
+                );
+              },
+            ),
+            // Пункт "О нас"
             ListTile(
               leading: const Icon(Icons.info),
               title: const Text('О нас'),
               onTap: () {
-                Navigator.pop(context); // Close the drawer
+                Navigator.pop(context); // Закрыть меню
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const AboutUsScreen()),
@@ -1119,6 +1138,61 @@ class _MainPageState extends State<MainPage> {
             label: 'Профиль',
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Карта Screen
+class MapScreen extends StatelessWidget {
+  const MapScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Карта'),
+        backgroundColor: const Color(0xFF1C3D5A),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              isDark ? const Color(0xFF0A1929) : Colors.white,
+              isDark ? const Color(0xFF1C3D5A) : Colors.blue.shade100,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: FlutterMap(
+          options: MapOptions(
+            center: LatLng(55.7249, 37.6443), // Координаты офиса
+            zoom: 16.0,
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+              subdomains: const ['a', 'b', 'c'],
+              userAgentPackageName: 'com.example.israel_del_cargo_app',
+            ),
+            MarkerLayer(
+              markers: [
+                Marker(
+                  width: 80.0,
+                  height: 80.0,
+                  point: LatLng(55.7249, 37.6443),
+                  builder: (ctx) => const Icon(
+                    Icons.location_on,
+                    color: Colors.red,
+                    size: 40,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2303,8 +2377,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             : Colors.grey.shade200,
                         prefixIcon: const Icon(Icons.person),
                         border: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(30),
                           borderSide: BorderSide.none,
                         ),
                       ),
@@ -2329,8 +2402,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             : Colors.grey.shade200,
                         prefixIcon: const Icon(Icons.email),
                         border: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(30),
                           borderSide: BorderSide.none,
                         ),
                       ),
@@ -2358,8 +2430,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             : Colors.grey.shade200,
                         prefixIcon: const Icon(Icons.phone),
                         border: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(30),
                           borderSide: BorderSide.none,
                         ),
                       ),
@@ -2389,8 +2460,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             : Colors.grey.shade200,
                         prefixIcon: const Icon(Icons.home),
                         border: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(30),
                           borderSide: BorderSide.none,
                         ),
                       ),
@@ -2410,8 +2480,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         padding: const EdgeInsets.symmetric(
                             vertical: 15, horizontal: 50),
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(30),
                         ),
                       ),
                       child: const Text('Сохранить'),

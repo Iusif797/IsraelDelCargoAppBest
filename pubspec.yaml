@@ -30,6 +30,10 @@ dependencies:
   # Локальная аутентификация для Face ID
   local_auth: ^2.1.3
 
+  # Карта OpenStreetMap
+  flutter_map: ^4.0.0
+  latlong2: ^0.8.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -41,3 +45,4 @@ flutter:
   # Определение активов (изображений, шрифтов и т.д.)
   assets:
     - assets/images/logo.png
+    
