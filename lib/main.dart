@@ -1,5 +1,3 @@
-// main.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -11,11 +9,9 @@ import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-
 // Добавляем импорты для flutter_map и latlong2
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -299,6 +295,17 @@ class DatabaseHelper {
     Database db = await database;
     return await db.delete('cart');
   }
+
+  // Новый метод для обновления количества товара в корзине
+  Future<int> updateCartItemQuantity(String trackingNumber, int quantity) async {
+    Database db = await database;
+    return await db.update(
+      'cart',
+      {'quantity': quantity},
+      where: 'trackingNumber = ?',
+      whereArgs: [trackingNumber],
+    );
+  }
 }
 
 /// ==================== State Management ====================
@@ -326,25 +333,59 @@ class AppState extends ChangeNotifier {
         _cartItems.indexWhere((item) => item.serviceName == serviceName);
 
     if (existingItemIndex == -1) {
-      _cartItems.add(CartItem(
+      final newItem = CartItem(
         serviceName: serviceName,
         quantity: 1,
         price: price,
         trackingNumber: trackingNumber,
-      ));
+      );
+      _cartItems.add(newItem);
+      DatabaseHelper.instance.addToCart(newItem);
     } else {
       _cartItems[existingItemIndex].quantity++;
+      DatabaseHelper.instance.updateCartItemQuantity(
+          _cartItems[existingItemIndex].trackingNumber,
+          _cartItems[existingItemIndex].quantity);
     }
     notifyListeners();
   }
 
   void removeFromCart(String serviceName) {
-    _cartItems.removeWhere((item) => item.serviceName == serviceName);
-    notifyListeners();
+    final existingItemIndex =
+        _cartItems.indexWhere((item) => item.serviceName == serviceName);
+    if (existingItemIndex != -1) {
+      _cartItems.removeAt(existingItemIndex);
+      DatabaseHelper.instance.clearCart();
+      for (var item in _cartItems) {
+        DatabaseHelper.instance.addToCart(item);
+      }
+      notifyListeners();
+    }
   }
 
   void clearCart() {
     _cartItems.clear();
+    DatabaseHelper.instance.clearCart();
+    notifyListeners();
+  }
+
+  // Новый метод для увеличения количества товара
+  Future<void> increaseQuantity(CartItem item) async {
+    item.quantity++;
+    await DatabaseHelper.instance.updateCartItemQuantity(
+        item.trackingNumber, item.quantity);
+    notifyListeners();
+  }
+
+  // Новый метод для уменьшения количества товара
+  Future<void> decreaseQuantity(CartItem item) async {
+    if (item.quantity > 1) {
+      item.quantity--;
+      await DatabaseHelper.instance.updateCartItemQuantity(
+          item.trackingNumber, item.quantity);
+    } else {
+      removeFromCart(item.serviceName);
+    }
     notifyListeners();
   }
 
@@ -405,6 +446,13 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // Новый метод для загрузки корзины из базы данных
+  Future<void> loadCart() async {
+    _cartItems.clear();
+    _cartItems.addAll(await DatabaseHelper.instance.getCartItems());
+    notifyListeners();
+  }
 }
 
 /// ==================== Application Widgets ====================
@@ -431,7 +479,7 @@ class IsraelDelCargoApp extends StatelessWidget {
           headlineLarge: TextStyle(
               color: Colors.black, fontSize: 24.0, fontWeight: FontWeight.bold),
           headlineMedium: TextStyle(
-              color: Colors.black, fontSize: 20.0, fontWeight: FontWeight.bold),
+              color: Colors.black, fontSize:  20.0, fontWeight: FontWeight.bold),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -517,12 +565,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
         _authenticate().then((_) {
           if (_isAuthenticated) {
             final appState = Provider.of<AppState>(context, listen: false);
-            appState.tryAutoLogin();
+            appState.tryAutoLogin().then((_) {
+              appState.loadCart();
+            });
           }
         });
       } else {
         final appState = Provider.of<AppState>(context, listen: false);
-        appState.tryAutoLogin();
+        appState.tryAutoLogin().then((_) {
+          appState.loadCart();
+        });
       }
     });
   }
@@ -575,6 +627,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     if (appState.currentUser != null) {
+      await appState.loadCart();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const MainPage()),
@@ -605,6 +658,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isAuthenticated) {
       final appState = Provider.of<AppState>(context, listen: false);
       await appState.tryAutoLogin();
+      await appState.loadCart();
       if (appState.currentUser != null) {
         Navigator.pushReplacement(
           context,
@@ -1211,6 +1265,8 @@ class _HomeContentState extends State<HomeContent> {
   String? _countryOrigin;
   String? _countryDestination;
   final _weightController = TextEditingController();
+  final _lengthController = TextEditingController(); // Новый контроллер
+  final _widthController = TextEditingController(); // Новый контроллер
 
   // List of services with their prices
   final List<Map<String, dynamic>> services = const [
@@ -1332,7 +1388,11 @@ class _HomeContentState extends State<HomeContent> {
   void _calculateTotal(BuildContext context) {
     if (_formKey.currentState!.validate()) {
       double weight = double.parse(_weightController.text.trim());
-      double deliveryCost = weight * 500.0; // 500 ₽ за кг
+      double length = double.parse(_lengthController.text.trim());
+      double width = double.parse(_widthController.text.trim());
+
+      // Пример формулы расчета: базовая стоимость за кг + стоимость за объем
+      double deliveryCost = (weight * 500.0) + (length * width * 10.0);
 
       final appState = Provider.of<AppState>(context, listen: false);
       double cartTotal = appState.cartItems.fold(0.0,
@@ -1368,6 +1428,8 @@ class _HomeContentState extends State<HomeContent> {
   @override
   void dispose() {
     _weightController.dispose();
+    _lengthController.dispose(); // Освобождаем контроллер
+    _widthController.dispose(); // Освобождаем контроллер
     super.dispose();
   }
 
@@ -1594,6 +1656,66 @@ class _HomeContentState extends State<HomeContent> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 16),
+                  // Поле ввода длины
+                  TextFormField(
+                    controller: _lengthController,
+                    decoration: InputDecoration(
+                      labelText: 'Длина (см)',
+                      filled: true,
+                      fillColor: isDark
+                          ? Colors.white.withOpacity(0.2)
+                          : Colors.grey.shade200,
+                      prefixIcon: const Icon(Icons.straighten),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    keyboardType: TextInputType.number,
+                    style:
+                        TextStyle(color: isDark ? Colors.white : Colors.black),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Пожалуйста, введите длину';
+                      }
+                      if (double.tryParse(value) == null ||
+                          double.parse(value) <= 0) {
+                        return 'Пожалуйста, введите корректную длину';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Поле ввода ширины
+                  TextFormField(
+                    controller: _widthController,
+                    decoration: InputDecoration(
+                      labelText: 'Ширина (см)',
+                      filled: true,
+                      fillColor: isDark
+                          ? Colors.white.withOpacity(0.2)
+                          : Colors.grey.shade200,
+                      prefixIcon: const Icon(Icons.straighten),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    keyboardType: TextInputType.number,
+                    style:
+                        TextStyle(color: isDark ? Colors.white : Colors.black),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Пожалуйста, введите ширину';
+                      }
+                      if (double.tryParse(value) == null ||
+                          double.parse(value) <= 0) {
+                        return 'Пожалуйста, введите корректную ширину';
+                      }
+                      return null;
+                    },
+                  ),
                   const SizedBox(height: 24),
                   // Кнопка "Рассчитать"
                   ElevatedButton(
@@ -1708,7 +1830,23 @@ class CartScreen extends StatelessWidget {
                 return ListTile(
                   leading: const Icon(Icons.shopping_cart),
                   title: Text(item.serviceName),
-                  subtitle: Text('Количество: ${item.quantity}'),
+                  subtitle: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove),
+                        onPressed: () {
+                          appState.decreaseQuantity(item);
+                        },
+                      ),
+                      Text('${item.quantity}'),
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: () {
+                          appState.increaseQuantity(item);
+                        },
+                      ),
+                    ],
+                  ),
                   trailing: Text('${item.price * item.quantity} ₽'),
                   onLongPress: () {
                     appState.removeFromCart(item.serviceName);
@@ -2406,9 +2544,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           borderSide: BorderSide.none,
                         ),
                       ),
+                      keyboardType: TextInputType.emailAddress,
                       style:
                           TextStyle(color: isDark ? Colors.white : Colors.black),
-                      keyboardType: TextInputType.emailAddress,
                       validator: (value) {
                         if (value == null ||
                             value.isEmpty ||
