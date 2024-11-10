@@ -1,7 +1,7 @@
 name: israel_del_cargo_app
 description: A Flutter application for IsraelDelCargo services.
 
-# Версия приложения
+# Version of the application
 version: 1.0.0+1
 
 environment:
@@ -11,26 +11,26 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Управление состоянием
+  # State management
   provider: ^6.0.5
 
-  # Работа с базой данных SQLite
+  # SQLite database operations
   sqflite: ^2.2.8
   path: ^1.8.3
 
-  # Открытие URL (например, для WhatsApp)
+  # Opening URLs (e.g., for WhatsApp)
   url_launcher: ^6.1.10
 
-  # Хранение данных на устройстве
+  # Storing data on the device
   shared_preferences: ^2.1.1
 
-  # Выбор изображений (для аватара профиля)
+  # Image picker (for profile avatar)
   image_picker: ^0.8.7+4
 
-  # Локальная аутентификация для Face ID
+  # Local authentication for Face ID
   local_auth: ^2.1.3
 
-  # Карта OpenStreetMap
+  # OpenStreetMap
   flutter_map: ^4.0.0
   latlong2: ^0.8.1
 
@@ -42,7 +42,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Определение активов (изображений, шрифтов и т.д.)
+  # Assets (images, fonts, etc.)
   assets:
     - assets/images/logo.png
     

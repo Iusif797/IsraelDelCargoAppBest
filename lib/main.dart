@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// Добавляем импорты для flutter_map и latlong2
+// Импорты для flutter_map и latlong2
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -24,7 +24,7 @@ void main() async {
   );
 }
 
-/// ==================== Models ====================
+/// ==================== Модели ====================
 
 /// Модель пользователя
 class UserModel {
@@ -78,7 +78,7 @@ class CartItem {
 class Shipment {
   final int? id;
   final String trackingNumber;
-  final String status;
+  String status; // Сделано изменяемым
   final String origin;
   final String destination;
   final String estimatedDelivery;
@@ -107,9 +107,9 @@ class Shipment {
   }
 }
 
-/// ==================== Database Helper ====================
+/// ==================== Помощник базы данных ====================
 
-/// Синглтон класс DatabaseHelper
+/// Singleton класс DatabaseHelper
 class DatabaseHelper {
   DatabaseHelper._privateConstructor();
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
@@ -124,7 +124,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       dbPath,
-      version: 4,
+      version: 5, // Увеличьте версию базы данных при изменениях схемы
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -168,10 +168,21 @@ class DatabaseHelper {
     ''');
   }
 
-  // Обновление базы данных для добавления новых полей
+  // Обновление базы данных
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 4) {
-      // Добавьте логику обновления, если необходимо
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS shipments(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          trackingNumber TEXT UNIQUE,
+          status TEXT,
+          origin TEXT,
+          destination TEXT,
+          estimatedDelivery TEXT,
+          userId INTEGER,
+          FOREIGN KEY (userId) REFERENCES users(id)
+        )
+      ''');
     }
   }
 
@@ -196,11 +207,11 @@ class DatabaseHelper {
       return UserModel(
         id: maps.first['id'],
         name: maps.first['name'] ?? '',
-        email: maps.first['email'],
+        email: maps.first['email'] ?? '',
         phone: maps.first['phone'] ?? '',
         address: maps.first['address'] ?? '',
         avatarPath: maps.first['avatarPath'],
-        password: maps.first['password'],
+        password: maps.first['password'] ?? '',
       );
     }
     return null;
@@ -217,14 +228,30 @@ class DatabaseHelper {
       return UserModel(
         id: maps.first['id'],
         name: maps.first['name'] ?? '',
-        email: maps.first['email'],
+        email: maps.first['email'] ?? '',
         phone: maps.first['phone'] ?? '',
         address: maps.first['address'] ?? '',
         avatarPath: maps.first['avatarPath'],
-        password: maps.first['password'],
+        password: maps.first['password'] ?? '',
       );
     }
     return null;
+  }
+
+  Future<List<UserModel>> getAllUsers() async {
+    Database db = await database;
+    List<Map<String, dynamic>> maps = await db.query('users');
+    return List.generate(maps.length, (i) {
+      return UserModel(
+        id: maps[i]['id'],
+        name: maps[i]['name'] ?? '',
+        email: maps[i]['email'] ?? '',
+        phone: maps[i]['phone'] ?? '',
+        address: maps[i]['address'] ?? '',
+        avatarPath: maps[i]['avatarPath'],
+        password: maps[i]['password'] ?? '',
+      );
+    });
   }
 
   Future<int> updateUser(UserModel user) async {
@@ -257,14 +284,40 @@ class DatabaseHelper {
     return List.generate(maps.length, (i) {
       return Shipment(
         id: maps[i]['id'],
-        trackingNumber: maps[i]['trackingNumber'],
-        status: maps[i]['status'],
-        origin: maps[i]['origin'],
-        destination: maps[i]['destination'],
-        estimatedDelivery: maps[i]['estimatedDelivery'],
-        userId: maps[i]['userId'],
+        trackingNumber: maps[i]['trackingNumber'] ?? '',
+        status: maps[i]['status'] ?? '',
+        origin: maps[i]['origin'] ?? '',
+        destination: maps[i]['destination'] ?? '',
+        estimatedDelivery: maps[i]['estimatedDelivery'] ?? '',
+        userId: maps[i]['userId'] ?? 0,
       );
     });
+  }
+
+  Future<List<Shipment>> getAllShipments() async {
+    Database db = await database;
+    List<Map<String, dynamic>> maps = await db.query('shipments');
+    return List.generate(maps.length, (i) {
+      return Shipment(
+        id: maps[i]['id'],
+        trackingNumber: maps[i]['trackingNumber'] ?? '',
+        status: maps[i]['status'] ?? '',
+        origin: maps[i]['origin'] ?? '',
+        destination: maps[i]['destination'] ?? '',
+        estimatedDelivery: maps[i]['estimatedDelivery'] ?? '',
+        userId: maps[i]['userId'] ?? 0,
+      );
+    });
+  }
+
+  Future<int> updateShipment(Shipment shipment) async {
+    Database db = await database;
+    return await db.update(
+      'shipments',
+      shipment.toMap(),
+      where: 'id = ?',
+      whereArgs: [shipment.id],
+    );
   }
 
   // Корзина CRUD
@@ -296,7 +349,7 @@ class DatabaseHelper {
     return await db.delete('cart');
   }
 
-  // Новый метод для обновления количества товара в корзине
+  // Обновление количества товаров в корзине
   Future<int> updateCartItemQuantity(String trackingNumber, int quantity) async {
     Database db = await database;
     return await db.update(
@@ -308,17 +361,21 @@ class DatabaseHelper {
   }
 }
 
-/// ==================== State Management ====================
+/// ==================== Управление состоянием ====================
 
 /// AppState для управления темой, пользователем и корзиной
 class AppState extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.dark;
   final List<CartItem> _cartItems = [];
   UserModel? _currentUser;
+  bool _isAdmin = false; // Добавлено для админки
+  bool _isGuest = false; // Добавлено для гостевого входа
 
   ThemeMode get themeMode => _themeMode;
   List<CartItem> get cartItems => _cartItems;
   UserModel? get currentUser => _currentUser;
+  bool get isAdmin => _isAdmin; // Добавлено для админки
+  bool get isGuest => _isGuest; // Добавлено для гостевого входа
 
   bool get isDarkMode => _themeMode == ThemeMode.dark;
 
@@ -369,7 +426,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Новый метод для увеличения количества товара
+  // Увеличение количества товаров
   Future<void> increaseQuantity(CartItem item) async {
     item.quantity++;
     await DatabaseHelper.instance.updateCartItemQuantity(
@@ -377,7 +434,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Новый метод для уменьшения количества товара
+  // Уменьшение количества товаров
   Future<void> decreaseQuantity(CartItem item) async {
     if (item.quantity > 1) {
       item.quantity--;
@@ -393,14 +450,30 @@ class AppState extends ChangeNotifier {
     UserModel? user = await DatabaseHelper.instance.getUser(email, password);
     if (user != null) {
       _currentUser = user;
+      _isGuest = false; // Добавлено
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setInt('userId', user.id!);
+      // Проверка, является ли пользователь администратором
+      if (email == 'rf@mail.ru' && password == '123456789Rf') {
+        _isAdmin = true;
+      } else {
+        _isAdmin = false;
+      }
       notifyListeners();
     }
   }
 
+  Future<void> loginAsGuest() async {
+    _currentUser = null;
+    _isGuest = true;
+    _isAdmin = false;
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     _currentUser = null;
+    _isAdmin = false; // Сброс флага администратора
+    _isGuest = false; // Сброс гостевого входа
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('userId');
     notifyListeners();
@@ -413,6 +486,14 @@ class AppState extends ChangeNotifier {
       UserModel? user = await DatabaseHelper.instance.getUserById(userId);
       if (user != null) {
         _currentUser = user;
+        _isGuest = false; // Добавлено
+        // Проверка, является ли пользователь администратором
+        if (_currentUser!.email == 'rf@mail.ru' &&
+            _currentUser!.password == '123456789Rf') {
+          _isAdmin = true;
+        } else {
+          _isAdmin = false;
+        }
         notifyListeners();
       }
     }
@@ -447,7 +528,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // Новый метод для загрузки корзины из базы данных
+  // Загрузка корзины из базы данных
   Future<void> loadCart() async {
     _cartItems.clear();
     _cartItems.addAll(await DatabaseHelper.instance.getCartItems());
@@ -455,7 +536,7 @@ class AppState extends ChangeNotifier {
   }
 }
 
-/// ==================== Application Widgets ====================
+/// ==================== Виджеты приложения ====================
 
 /// Главный виджет приложения
 class IsraelDelCargoApp extends StatelessWidget {
@@ -479,7 +560,7 @@ class IsraelDelCargoApp extends StatelessWidget {
           headlineLarge: TextStyle(
               color: Colors.black, fontSize: 24.0, fontWeight: FontWeight.bold),
           headlineMedium: TextStyle(
-              color: Colors.black, fontSize:  20.0, fontWeight: FontWeight.bold),
+              color: Colors.black, fontSize: 20.0, fontWeight: FontWeight.bold),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -502,9 +583,13 @@ class IsraelDelCargoApp extends StatelessWidget {
           bodyLarge: TextStyle(color: Colors.white),
           bodyMedium: TextStyle(color: Colors.white),
           headlineLarge: TextStyle(
-              color: Colors.white, fontSize: 24.0, fontWeight: FontWeight.bold),
+              color: Colors.white,
+              fontSize: 24.0,
+              fontWeight: FontWeight.bold),
           headlineMedium: TextStyle(
-              color: Colors.white, fontSize: 20.0, fontWeight: FontWeight.bold),
+              color: Colors.white,
+              fontSize: 20.0,
+              fontWeight: FontWeight.bold),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -523,7 +608,7 @@ class IsraelDelCargoApp extends StatelessWidget {
   }
 }
 
-/// Обертка для определения, какой экран показать в зависимости от аутентификации
+/// Обертка для определения экрана на основе аутентификации
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({Key? key}) : super(key: key);
 
@@ -582,7 +667,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
-    if (appState.currentUser != null) {
+    if (appState.currentUser != null || appState.isGuest) {
       return const MainPage();
     } else {
       return const LoginScreen();
@@ -590,9 +675,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 }
 
-/// ==================== Screens ====================
+/// ==================== Экраны ====================
 
-/// Login Screen
+/// Экран входа
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
 
@@ -672,6 +757,15 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _loginAsGuest() {
+    final appState = Provider.of<AppState>(context, listen: false);
+    appState.loginAsGuest();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const MainPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -713,7 +807,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      // Email Field
+                      // Поле Email
                       TextFormField(
                         controller: _emailController,
                         decoration: InputDecoration(
@@ -741,7 +835,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      // Password Field
+                      // Поле пароля
                       TextFormField(
                         controller: _passwordController,
                         decoration: InputDecoration(
@@ -804,6 +898,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         style:
                             TextStyle(color: isDark ? Colors.white : Colors.blue),
                       ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loginAsGuest,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 15, horizontal: 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: const Text('Продолжить как гость'),
+                      ),
                     ],
                   ),
                 )
@@ -816,7 +922,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// Signup Screen
+/// Экран регистрации
 class SignupScreen extends StatefulWidget {
   const SignupScreen({Key? key}) : super(key: key);
 
@@ -1069,7 +1175,7 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 }
 
-/// Main Page with Bottom Navigation and Drawer
+/// Главная страница с нижней навигацией и меню
 class MainPage extends StatefulWidget {
   const MainPage({Key? key}) : super(key: key);
 
@@ -1081,39 +1187,113 @@ class _MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    HomeContent(),
-    TrackingTab(),
-    CartScreen(),
-    ProfileScreen(),
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-      _pageController.animateToPage(
-        index,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final isAdmin = appState.isAdmin;
+    final isGuest = appState.isGuest;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    List<Widget> _widgetOptions;
+    List<BottomNavigationBarItem> bottomNavItems;
+
+    if (isGuest) {
+      _widgetOptions = <Widget>[
+        const HomeContent(),
+        const AboutUsScreen(),
+        const GuestProfileScreen(),
+      ];
+
+      bottomNavItems = const <BottomNavigationBarItem>[
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home),
+          label: 'Главная',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.info),
+          label: 'О нас',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person),
+          label: 'Профиль',
+        ),
+      ];
+    } else if (isAdmin) {
+      _widgetOptions = <Widget>[
+        const HomeContent(),
+        const TrackingTab(),
+        const CartScreen(),
+        const ProfileScreen(),
+        const AdminScreen(),
+      ];
+
+      bottomNavItems = const <BottomNavigationBarItem>[
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home),
+          label: 'Главная',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.track_changes),
+          label: 'Трекеры',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.shopping_cart),
+          label: 'Корзина',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person),
+          label: 'Профиль',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.admin_panel_settings),
+          label: 'Админка',
+        ),
+      ];
+    } else {
+      _widgetOptions = <Widget>[
+        const HomeContent(),
+        const TrackingTab(),
+        const CartScreen(),
+        const ProfileScreen(),
+      ];
+
+      bottomNavItems = const <BottomNavigationBarItem>[
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home),
+          label: 'Главная',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.track_changes),
+          label: 'Трекеры',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.shopping_cart),
+          label: 'Корзина',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person),
+          label: 'Профиль',
+        ),
+      ];
+    }
+
+    if (_selectedIndex >= _widgetOptions.length) {
+      _selectedIndex = 0;
+    }
+
+    void _onItemTapped(int index) {
+      setState(() {
+        _selectedIndex = index;
+        _pageController.jumpToPage(index);
+      });
+    }
+
     return Scaffold(
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            // Drawer Header
+            // Заголовок меню
             DrawerHeader(
               decoration: const BoxDecoration(
                 color: Color(0xFF1C3D5A),
@@ -1174,30 +1354,67 @@ class _MainPageState extends State<MainPage> {
         selectedItemColor: const Color(0xFF0D47A1),
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Главная',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.track_changes),
-            label: 'Трекеры',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Корзина',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Профиль',
-          ),
-        ],
+        items: bottomNavItems,
       ),
     );
   }
 }
 
-/// Карта Screen
+/// Экран для гостевого профиля
+class GuestProfileScreen extends StatelessWidget {
+  const GuestProfileScreen({Key? key}) : super(key: key);
+
+  void _logout(BuildContext context) {
+    final appState = Provider.of<AppState>(context, listen: false);
+    appState.logout();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Профиль гостя'),
+        backgroundColor: const Color(0xFF1C3D5A),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => _logout(context),
+          ),
+        ],
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              isDark ? const Color(0xFF0A1929) : Colors.white,
+              isDark ? const Color(0xFF1C3D5A) : Colors.blue.shade100,
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        padding: const EdgeInsets.all(16.0),
+        child: Center(
+          child: Text(
+            'Вы вошли как гость. Для доступа ко всем функциям, пожалуйста, зарегистрируйтесь или войдите.',
+            style: TextStyle(
+              fontSize: 18,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Экран карты
 class MapScreen extends StatelessWidget {
   const MapScreen({Key? key}) : super(key: key);
 
@@ -1252,7 +1469,7 @@ class MapScreen extends StatelessWidget {
   }
 }
 
-/// Home Content with Country Selection, Weight Input, and Services
+/// Главный контент с выбором страны, вводом веса и услугами
 class HomeContent extends StatefulWidget {
   const HomeContent({Key? key}) : super(key: key);
 
@@ -1265,10 +1482,10 @@ class _HomeContentState extends State<HomeContent> {
   String? _countryOrigin;
   String? _countryDestination;
   final _weightController = TextEditingController();
-  final _lengthController = TextEditingController(); // Новый контроллер
-  final _widthController = TextEditingController(); // Новый контроллер
+  final _lengthController = TextEditingController();
+  final _widthController = TextEditingController();
 
-  // List of services with their prices
+  // Список услуг с ценами
   final List<Map<String, dynamic>> services = const [
     {
       'name': 'Доставка документов',
@@ -1341,6 +1558,9 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   Widget _buildServiceCard(BuildContext context, Map<String, dynamic> service) {
+    final appState = Provider.of<AppState>(context);
+    final isGuest = appState.isGuest;
+
     return Card(
       elevation: 4,
       color: Theme.of(context).primaryColor,
@@ -1348,13 +1568,18 @@ class _HomeContentState extends State<HomeContent> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
-        onTap: () {
-          final appState = Provider.of<AppState>(context, listen: false);
-          appState.addToCart(service['name'], service['price']);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${service['name']} добавлено в корзину')),
-          );
-        },
+        onTap: isGuest
+            ? () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Доступно только для зарегистрированных пользователей')),
+                );
+              }
+            : () {
+                appState.addToCart(service['name'], service['price']);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${service['name']} добавлено в корзину')),
+                );
+              },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -1395,20 +1620,27 @@ class _HomeContentState extends State<HomeContent> {
       double deliveryCost = (weight * 500.0) + (length * width * 10.0);
 
       final appState = Provider.of<AppState>(context, listen: false);
-      double cartTotal = appState.cartItems.fold(0.0,
-          (sum, item) => sum + item.price * item.quantity);
-
-      double total = cartTotal + deliveryCost;
+      appState.addToCart('Доставка груза', deliveryCost);
 
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Итоговая стоимость'),
-          content: Text('Общая стоимость: ${total.toStringAsFixed(2)} ₽'),
+          title: const Text('Доставка добавлена в корзину'),
+          content: const Text('Перейти к оформлению заказа?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Закрыть'),
+              child: const Text('Нет'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CartScreen()),
+                );
+              },
+              child: const Text('Да'),
             ),
           ],
         ),
@@ -1417,19 +1649,24 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   void _showApplicationForm(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return ApplicationFormDialog();
-      },
-    );
+    final appState = Provider.of<AppState>(context);
+    if (appState.isGuest) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Доступно только для зарегистрированных пользователей')),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ApplicationFormScreen()),
+      );
+    }
   }
 
   @override
   void dispose() {
     _weightController.dispose();
-    _lengthController.dispose(); // Освобождаем контроллер
-    _widthController.dispose(); // Освобождаем контроллер
+    _lengthController.dispose();
+    _widthController.dispose();
     super.dispose();
   }
 
@@ -1744,62 +1981,92 @@ class _HomeContentState extends State<HomeContent> {
   }
 }
 
-/// Tracking Screen
+/// Экран отслеживания
 class TrackingTab extends StatelessWidget {
   const TrackingTab({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
-    final trackingItems = appState.cartItems;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Отслеживание'),
-        backgroundColor: const Color(0xFF1C3D5A),
-      ),
-      body: trackingItems.isEmpty
-          ? const Center(
-              child: Text(
-                'У вас нет активных трек-номеров.',
-                style: TextStyle(fontSize: 18),
-              ),
-            )
-          : ListView.builder(
-              itemCount: trackingItems.length,
-              itemBuilder: (context, index) {
-                final item = trackingItems[index];
-                return Card(
-                  margin: const EdgeInsets.all(8.0),
-                  child: ListTile(
-                    leading: const Icon(Icons.local_shipping),
-                    title: Text(item.serviceName),
-                    subtitle: Text('Трек-номер: ${item.trackingNumber}'),
-                    trailing: const Text('Статус: В обработке'),
-                  ),
-                );
-              },
+    if (appState.isGuest) {
+      return const Center(
+        child: Text(
+          'Доступно только для зарегистрированных пользователей.',
+          style: TextStyle(fontSize: 18),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    return FutureBuilder<List<Shipment>>(
+      future: DatabaseHelper.instance.getShipmentsByUser(appState.currentUser!.id!),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text('Ошибка: ${snapshot.error}'));
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(
+            child: Text(
+              'У вас нет активных трек-номеров.',
+              style: TextStyle(fontSize: 18),
             ),
+          );
+        } else {
+          final shipments = snapshot.data!;
+          return ListView.builder(
+            itemCount: shipments.length,
+            itemBuilder: (context, index) {
+              final shipment = shipments[index];
+              return Card(
+                margin: const EdgeInsets.all(8.0),
+                child: ListTile(
+                  leading: const Icon(Icons.local_shipping),
+                  title: Text('Трек-номер: ${shipment.trackingNumber}'),
+                  subtitle: Text('Статус: ${shipment.status}'),
+                ),
+              );
+            },
+          );
+        }
+      },
     );
   }
 }
 
-/// Cart Screen with "Submit Application" feature
+/// Экран корзины с функцией "Оформить заявку"
 class CartScreen extends StatelessWidget {
   const CartScreen({Key? key}) : super(key: key);
 
   void _showApplicationForm(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return ApplicationFormDialog();
-      },
-    );
+    final appState = Provider.of<AppState>(context, listen: false);
+    if (appState.isGuest) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Доступно только для зарегистрированных пользователей')),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ApplicationFormScreen()),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
+
+    if (appState.isGuest) {
+      return const Center(
+        child: Text(
+          'Доступно только для зарегистрированных пользователей.',
+          style: TextStyle(fontSize: 18),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Корзина'),
@@ -1881,13 +2148,13 @@ class CartScreen extends StatelessWidget {
   }
 }
 
-/// Application Form Dialog
-class ApplicationFormDialog extends StatefulWidget {
+/// Экран оформления заявки (теперь открывается как новый экран)
+class ApplicationFormScreen extends StatefulWidget {
   @override
-  _ApplicationFormDialogState createState() => _ApplicationFormDialogState();
+  _ApplicationFormScreenState createState() => _ApplicationFormScreenState();
 }
 
-class _ApplicationFormDialogState extends State<ApplicationFormDialog> {
+class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _selectedProduct;
   final _nameController = TextEditingController();
@@ -1896,6 +2163,7 @@ class _ApplicationFormDialogState extends State<ApplicationFormDialog> {
   String? _originCountry;
   String? _destinationCountry;
   final _descriptionController = TextEditingController();
+  String? _selectedTariff;
 
   final List<String> countries = [
     'Россия',
@@ -1903,6 +2171,12 @@ class _ApplicationFormDialogState extends State<ApplicationFormDialog> {
     'Грузия',
     'Казахстан',
   ];
+
+  final Map<String, double> tariffs = {
+    'Эконом': 1.0,
+    'Стандарт': 1.5,
+    'Экспресс': 2.0,
+  };
 
   @override
   void initState() {
@@ -1913,6 +2187,17 @@ class _ApplicationFormDialogState extends State<ApplicationFormDialog> {
       _phoneController.text = appState.currentUser!.phone;
       _emailController.text = appState.currentUser!.email;
     }
+    final products = appState.cartItems.isNotEmpty
+        ? appState.cartItems.map((item) => item.serviceName).toList()
+        : [
+            'Доставка документов',
+            'Религиозные атрибуты (книги, иудайка)',
+            'Одежда, обувь, головные уборы',
+            'Кошерное питание',
+            'Товары из Duty Free',
+            'Маленькие посылки (до 1кг)',
+          ];
+    _selectedProduct = products.first;
   }
 
   void _sendApplication(BuildContext context) async {
@@ -1923,6 +2208,11 @@ class _ApplicationFormDialogState extends State<ApplicationFormDialog> {
         (sum, item) => sum + item.price * item.quantity,
       );
 
+      double tariffMultiplier = tariffs[_selectedTariff!] ?? 1.0;
+      total *= tariffMultiplier;
+
+      final trackingNumber = 'TRK${DateTime.now().millisecondsSinceEpoch}';
+
       final message = Uri.encodeComponent(
         'Здравствуйте!\n'
         'Я хочу оформить заявку на услугу: $_selectedProduct\n'
@@ -1931,14 +2221,36 @@ class _ApplicationFormDialogState extends State<ApplicationFormDialog> {
         'Email: ${_emailController.text}\n'
         'Страна отправления: $_originCountry\n'
         'Страна прибытия: $_destinationCountry\n'
+        'Тариф: $_selectedTariff\n'
         'Описание: ${_descriptionController.text}\n'
-        'Итого к оплате: $total ₽',
+        'Итого к оплате: $total ₽\n'
+        'Трек-номер: $trackingNumber',
       );
       final phoneNumber = '79914992420';
-      final url = 'https://wa.me/$phoneNumber?text=$message';
+      final url = Uri.parse('https://wa.me/$phoneNumber?text=$message');
 
-      if (await canLaunch(url)) {
-        await launch(url);
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+
+        // Создаем запись об отправлении
+        Shipment shipment = Shipment(
+          trackingNumber: trackingNumber,
+          status: 'В обработке',
+          origin: _originCountry ?? '',
+          destination: _destinationCountry ?? '',
+          estimatedDelivery: DateTime.now()
+              .add(const Duration(days: 7))
+              .toIso8601String(), // Установим примерную дату доставки
+          userId: appState.currentUser?.id ?? 0,
+        );
+        await DatabaseHelper.instance.addShipment(shipment);
+
+        // Очищаем корзину
+        appState.clearCart();
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Заявка отправлена')),
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Не удалось открыть WhatsApp')),
@@ -1954,10 +2266,34 @@ class _ApplicationFormDialogState extends State<ApplicationFormDialog> {
       (sum, item) => sum + item.price * item.quantity,
     );
 
+    double tariffMultiplier = tariffs[_selectedTariff!] ?? 1.0;
+    total *= tariffMultiplier;
+
+    final trackingNumber = 'TRK${DateTime.now().millisecondsSinceEpoch}';
+
     final url =
-        'https://www.tbank.ru/rm/rabaev.natan1/qBQMJ15331/?amount=$total';
-    if (await canLaunch(url)) {
-      await launch(url);
+        Uri.parse('https://www.tbank.ru/rm/rabaev.natan1/qBQMJ15331/');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+
+      // Создаем запись об отправлении
+      Shipment shipment = Shipment(
+        trackingNumber: trackingNumber,
+        status: 'Оплачено',
+        origin: _originCountry ?? '',
+        destination: _destinationCountry ?? '',
+        estimatedDelivery:
+            DateTime.now().add(const Duration(days: 7)).toIso8601String(),
+        userId: appState.currentUser?.id ?? 0,
+      );
+      await DatabaseHelper.instance.addShipment(shipment);
+
+      // Очищаем корзину
+      appState.clearCart();
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Оплата выполнена, заказ оформлен')),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Не удалось открыть ссылку для оплаты')),
@@ -1980,9 +2316,13 @@ class _ApplicationFormDialogState extends State<ApplicationFormDialog> {
           ];
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return AlertDialog(
-      title: const Text('Оформление заявки'),
-      content: SingleChildScrollView(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Оформление заявки'),
+        backgroundColor: const Color(0xFF1C3D5A),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
@@ -1999,6 +2339,7 @@ class _ApplicationFormDialogState extends State<ApplicationFormDialog> {
                     borderSide: BorderSide.none,
                   ),
                 ),
+                value: _selectedProduct,
                 items: products
                     .map((product) => DropdownMenuItem(
                           value: product,
@@ -2058,6 +2399,10 @@ class _ApplicationFormDialogState extends State<ApplicationFormDialog> {
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Введите номер телефона';
+                  }
+                  if (!RegExp(r'^\+?\d{7,15}$')
+                      .hasMatch(value)) {
+                    return 'Введите корректный номер телефона';
                   }
                   return null;
                 },
@@ -2150,6 +2495,37 @@ class _ApplicationFormDialogState extends State<ApplicationFormDialog> {
                 },
               ),
               const SizedBox(height: 16),
+              // Выбор тарифа
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Выберите тариф',
+                  filled: true,
+                  fillColor:
+                      isDark ? Colors.white.withOpacity(0.2) : Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                items: tariffs.keys
+                    .map((tariff) => DropdownMenuItem(
+                          value: tariff,
+                          child: Text(tariff),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedTariff = value;
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Выберите тариф';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
               // Описание
               TextFormField(
                 controller: _descriptionController,
@@ -2165,25 +2541,29 @@ class _ApplicationFormDialogState extends State<ApplicationFormDialog> {
                 ),
                 maxLines: 3,
               ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  TextButton(
+                    onPressed: () => _makePayment(context),
+                    child: const Text('Оплатить'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => _sendApplication(context),
+                    child: const Text('Отправить заявку'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => _makePayment(context),
-          child: const Text('Оплатить'),
-        ),
-        ElevatedButton(
-          onPressed: () => _sendApplication(context),
-          child: const Text('Отправить заявку'),
-        ),
-      ],
     );
   }
 }
 
-/// About Us Screen
+/// Экран "О нас"
 class AboutUsScreen extends StatelessWidget {
   const AboutUsScreen({Key? key}) : super(key: key);
 
@@ -2261,9 +2641,10 @@ class AboutUsScreen extends StatelessWidget {
                       ElevatedButton.icon(
                         onPressed: () async {
                           const phoneNumber = '79914992420';
-                          final url = 'https://wa.me/$phoneNumber';
-                          if (await canLaunch(url)) {
-                            await launch(url);
+                          final url = Uri.parse('https://wa.me/$phoneNumber');
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url,
+                                mode: LaunchMode.externalApplication);
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -2290,7 +2671,7 @@ class AboutUsScreen extends StatelessWidget {
   }
 }
 
-/// Profile Screen
+/// Экран профиля
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
@@ -2315,6 +2696,16 @@ class ProfileScreen extends StatelessWidget {
     final appState = Provider.of<AppState>(context);
     final user = appState.currentUser;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (appState.isGuest) {
+      return const Center(
+        child: Text(
+          'Доступно только для зарегистрированных пользователей.',
+          style: TextStyle(fontSize: 18),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -2405,7 +2796,7 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-/// Edit Profile Screen
+/// Экран редактирования профиля
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({Key? key}) : super(key: key);
 
@@ -2416,10 +2807,10 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(); // New field
+  final _nameController = TextEditingController(); // Новое поле
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController(); // New field
-  final _addressController = TextEditingController(); // New field
+  final _phoneController = TextEditingController(); // Новое поле
+  final _addressController = TextEditingController(); // Новое поле
   String? _avatarPath;
 
   @override
@@ -2504,7 +2895,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // Name Field
+                    // Поле имени
                     TextFormField(
                       controller: _nameController,
                       decoration: InputDecoration(
@@ -2529,7 +2920,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Email Field
+                    // Поле Email
                     TextFormField(
                       controller: _emailController,
                       decoration: InputDecoration(
@@ -2557,7 +2948,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Phone Field
+                    // Поле телефона
                     TextFormField(
                       controller: _phoneController,
                       decoration: InputDecoration(
@@ -2579,15 +2970,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         if (value == null || value.isEmpty) {
                           return 'Пожалуйста, введите номер телефона';
                         }
-                        if (!RegExp(r'^\+?\d{7,15}$')
-                            .hasMatch(value)) {
+                        if (!RegExp(r'^\+?\d{7,15}$').hasMatch(value)) {
                           return 'Пожалуйста, введите корректный номер телефона';
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Address Field
+                    // Поле адреса
                     TextFormField(
                       controller: _addressController,
                       decoration: InputDecoration(
@@ -2629,6 +3019,139 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Экран администратора
+class AdminScreen extends StatefulWidget {
+  const AdminScreen({Key? key}) : super(key: key);
+
+  @override
+  _AdminScreenState createState() => _AdminScreenState();
+}
+
+class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  final List<Tab> myTabs = <Tab>[
+    const Tab(text: 'Пользователи'),
+    const Tab(text: 'Заказы'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: myTabs.length, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildUsersTab() {
+    return FutureBuilder<List<UserModel>>(
+      future: DatabaseHelper.instance.getAllUsers(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text('Ошибка: ${snapshot.error}'));
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('Нет зарегистрированных пользователей.'));
+        } else {
+          final users = snapshot.data!;
+          return ListView.builder(
+            itemCount: users.length,
+            itemBuilder: (context, index) {
+              final user = users[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundImage: user.avatarPath != null
+                      ? FileImage(File(user.avatarPath!))
+                      : const AssetImage('assets/images/avatar.png') as ImageProvider,
+                ),
+                title: Text(user.name),
+                subtitle: Text(user.email),
+                onTap: () {
+                  // Дополнительно: показать подробную информацию о пользователе
+                },
+              );
+            },
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildShipmentsTab() {
+    return FutureBuilder<List<Shipment>>(
+      future: DatabaseHelper.instance.getAllShipments(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text('Ошибка: ${snapshot.error}'));
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('Нет заказов.'));
+        } else {
+          final shipments = snapshot.data!;
+          return ListView.builder(
+            itemCount: shipments.length,
+            itemBuilder: (context, index) {
+              final shipment = shipments[index];
+              return ListTile(
+                leading: const Icon(Icons.local_shipping),
+                title: Text('Трек-номер: ${shipment.trackingNumber}'),
+                subtitle: Text('Статус: ${shipment.status}'),
+                trailing: DropdownButton<String>(
+                  value: shipment.status,
+                  items: <String>['В обработке', 'В пути', 'Доставлено']
+                      .map((String status) {
+                    return DropdownMenuItem<String>(
+                      value: status,
+                      child: Text(status),
+                    );
+                  }).toList(),
+                  onChanged: (String? newStatus) async {
+                    if (newStatus != null) {
+                      setState(() {
+                        shipment.status = newStatus;
+                      });
+                      await DatabaseHelper.instance.updateShipment(shipment);
+                    }
+                  },
+                ),
+              );
+            },
+          );
+        }
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Админка'),
+        backgroundColor: const Color(0xFF1C3D5A),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: myTabs,
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildUsersTab(),
+          _buildShipmentsTab(),
+        ],
       ),
     );
   }
