@@ -1426,44 +1426,49 @@ class MapScreen extends StatelessWidget {
         title: const Text('Карта'),
         backgroundColor: const Color(0xFF1C3D5A),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              isDark ? const Color(0xFF0A1929) : Colors.white,
-              isDark ? const Color(0xFF1C3D5A) : Colors.blue.shade100,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: FlutterMap(
-          options: MapOptions(
-            center: LatLng(55.7249, 37.6443), // Координаты офиса
-            zoom: 16.0,
-          ),
-          children: [
-            TileLayer(
-              urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-              subdomains: const ['a', 'b', 'c'],
-              userAgentPackageName: 'com.example.israel_del_cargo_app',
-            ),
-            MarkerLayer(
-              markers: [
-                Marker(
-                  width: 80.0,
-                  height: 80.0,
-                  point: LatLng(55.7249, 37.6443),
-                  builder: (ctx) => const Icon(
-                    Icons.location_on,
-                    color: Colors.red,
-                    size: 40,
-                  ),
+      body: Column(
+        children: [
+          Expanded(
+            child: FlutterMap(
+              options: MapOptions(
+                center: LatLng(55.7249, 37.6443), // Координаты офиса
+                zoom: 16.0,
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                  subdomains: const ['a', 'b', 'c'],
+                  userAgentPackageName: 'com.example.israel_del_cargo_app',
+                ),
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      width: 80.0,
+                      height: 80.0,
+                      point: LatLng(55.7249, 37.6443),
+                      builder: (ctx) => const Icon(
+                        Icons.location_on,
+                        color: Colors.red,
+                        size: 40,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              'ISraelDelCargo\nМосква, Олимпийский просп., 22',
+              style: TextStyle(
+                fontSize: 16,
+                color: isDark ? Colors.white : Colors.black,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2226,10 +2231,13 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
         'Итого к оплате: $total ₽\n'
         'Трек-номер: $trackingNumber',
       );
-      final phoneNumber = '79914992420';
-      final url = Uri.parse('https://wa.me/$phoneNumber?text=$message');
+      final url = Uri.parse('https://israeldelcargo.info');
 
-      if (await canLaunchUrl(url)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Открываем ссылку...')),
+      );
+
+      try {
         await launchUrl(url, mode: LaunchMode.externalApplication);
 
         // Создаем запись об отправлении
@@ -2251,9 +2259,9 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Заявка отправлена')),
         );
-      } else {
+      } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Не удалось открыть WhatsApp')),
+          const SnackBar(content: Text('Не удалось открыть ссылку')),
         );
       }
     }
@@ -2273,7 +2281,12 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
 
     final url =
         Uri.parse('https://www.tbank.ru/rm/rabaev.natan1/qBQMJ15331/');
-    if (await canLaunchUrl(url)) {
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Открываем ссылку для оплаты...')),
+    );
+
+    try {
       await launchUrl(url, mode: LaunchMode.externalApplication);
 
       // Создаем запись об отправлении
@@ -2294,7 +2307,7 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Оплата выполнена, заказ оформлен')),
       );
-    } else {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Не удалось открыть ссылку для оплаты')),
       );
@@ -2640,21 +2653,25 @@ class AboutUsScreen extends StatelessWidget {
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: () async {
-                          const phoneNumber = '79914992420';
-                          final url = Uri.parse('https://wa.me/$phoneNumber');
-                          if (await canLaunchUrl(url)) {
+                          final url = Uri.parse('https://israeldelcargo.info');
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Открываем ссылку...')),
+                          );
+
+                          try {
                             await launchUrl(url,
                                 mode: LaunchMode.externalApplication);
-                          } else {
+                          } catch (e) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                   content:
-                                      Text('Не удалось открыть WhatsApp')),
+                                      Text('Не удалось открыть ссылку')),
                             );
                           }
                         },
-                        icon: const Icon(Icons.chat),
-                        label: const Text('Связаться через WhatsApp'),
+                        icon: const Icon(Icons.link),
+                        label: const Text('Связаться через электронную визитку'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1C3D5A),
                         ),
