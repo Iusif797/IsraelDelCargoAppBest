@@ -583,13 +583,9 @@ class IsraelDelCargoApp extends StatelessWidget {
           bodyLarge: TextStyle(color: Colors.white),
           bodyMedium: TextStyle(color: Colors.white),
           headlineLarge: TextStyle(
-              color: Colors.white,
-              fontSize: 24.0,
-              fontWeight: FontWeight.bold),
+              color: Colors.white, fontSize: 24.0, fontWeight: FontWeight.bold),
           headlineMedium: TextStyle(
-              color: Colors.white,
-              fontSize: 20.0,
-              fontWeight: FontWeight.bold),
+              color: Colors.white, fontSize: 20.0, fontWeight: FontWeight.bold),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -1431,7 +1427,7 @@ class MapScreen extends StatelessWidget {
           Expanded(
             child: FlutterMap(
               options: MapOptions(
-                center: LatLng(55.7249, 37.6443), // Координаты офиса
+                center: LatLng(55.779277, 37.631897), // Обновленные координаты
                 zoom: 16.0,
               ),
               children: [
@@ -1445,7 +1441,7 @@ class MapScreen extends StatelessWidget {
                     Marker(
                       width: 80.0,
                       height: 80.0,
-                      point: LatLng(55.7249, 37.6443),
+                      point: LatLng(55.779277, 37.631897),
                       builder: (ctx) => const Icon(
                         Icons.location_on,
                         color: Colors.red,
@@ -1460,7 +1456,7 @@ class MapScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Text(
-              'ISraelDelCargo\nМосква, Олимпийский просп., 22',
+              'ISRAELDELCARGO\nМосква, Олимпийский просп., 22',
               style: TextStyle(
                 fontSize: 16,
                 color: isDark ? Colors.white : Colors.black,
@@ -1489,6 +1485,7 @@ class _HomeContentState extends State<HomeContent> {
   final _weightController = TextEditingController();
   final _lengthController = TextEditingController();
   final _widthController = TextEditingController();
+  final _heightController = TextEditingController(); // Новое поле
 
   // Список услуг с ценами
   final List<Map<String, dynamic>> services = const [
@@ -1620,9 +1617,10 @@ class _HomeContentState extends State<HomeContent> {
       double weight = double.parse(_weightController.text.trim());
       double length = double.parse(_lengthController.text.trim());
       double width = double.parse(_widthController.text.trim());
+      double height = double.parse(_heightController.text.trim());
 
-      // Пример формулы расчета: базовая стоимость за кг + стоимость за объем
-      double deliveryCost = (weight * 500.0) + (length * width * 10.0);
+      // Формула расчета стоимости доставки для Москвы
+      double deliveryCost = (weight * 500.0) + (length * width * height * 0.1);
 
       final appState = Provider.of<AppState>(context, listen: false);
       appState.addToCart('Доставка груза', deliveryCost);
@@ -1672,6 +1670,7 @@ class _HomeContentState extends State<HomeContent> {
     _weightController.dispose();
     _lengthController.dispose();
     _widthController.dispose();
+    _heightController.dispose(); // Освобождаем контроллер
     super.dispose();
   }
 
@@ -1958,6 +1957,36 @@ class _HomeContentState extends State<HomeContent> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 16),
+                  // Поле ввода высоты
+                  TextFormField(
+                    controller: _heightController,
+                    decoration: InputDecoration(
+                      labelText: 'Высота (см)',
+                      filled: true,
+                      fillColor: isDark
+                          ? Colors.white.withOpacity(0.2)
+                          : Colors.grey.shade200,
+                      prefixIcon: const Icon(Icons.height),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    keyboardType: TextInputType.number,
+                    style:
+                        TextStyle(color: isDark ? Colors.white : Colors.black),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Пожалуйста, введите высоту';
+                      }
+                      if (double.tryParse(value) == null ||
+                          double.parse(value) <= 0) {
+                        return 'Пожалуйста, введите корректную высоту';
+                      }
+                      return null;
+                    },
+                  ),
                   const SizedBox(height: 24),
                   // Кнопка "Рассчитать"
                   ElevatedButton(
@@ -2218,23 +2247,24 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
 
       final trackingNumber = 'TRK${DateTime.now().millisecondsSinceEpoch}';
 
-      final message = Uri.encodeComponent(
-        'Здравствуйте!\n'
-        'Я хочу оформить заявку на услугу: $_selectedProduct\n'
-        'Имя: ${_nameController.text}\n'
-        'Телефон: ${_phoneController.text}\n'
-        'Email: ${_emailController.text}\n'
-        'Страна отправления: $_originCountry\n'
-        'Страна прибытия: $_destinationCountry\n'
-        'Тариф: $_selectedTariff\n'
-        'Описание: ${_descriptionController.text}\n'
-        'Итого к оплате: $total ₽\n'
-        'Трек-номер: $trackingNumber',
-      );
-      final url = Uri.parse('https://israeldelcargo.info');
+      final message =
+          'Здравствуйте!\n'
+          'Я хочу оформить заявку на услугу: $_selectedProduct\n'
+          'Имя: ${_nameController.text}\n'
+          'Телефон: ${_phoneController.text}\n'
+          'Email: ${_emailController.text}\n'
+          'Страна отправления: $_originCountry\n'
+          'Страна прибытия: $_destinationCountry\n'
+          'Тариф: $_selectedTariff\n'
+          'Описание: ${_descriptionController.text}\n'
+          'Итого к оплате: $total ₽\n'
+          'Трек-номер: $trackingNumber';
+
+      final encodedMessage = Uri.encodeComponent(message);
+      final url = Uri.parse('https://wa.me/79914992420?text=$encodedMessage');
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Открываем ссылку...')),
+        const SnackBar(content: Text('Открываем WhatsApp...')),
       );
 
       try {
@@ -2261,7 +2291,7 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Не удалось открыть ссылку')),
+          const SnackBar(content: Text('Не удалось открыть WhatsApp')),
         );
       }
     }
