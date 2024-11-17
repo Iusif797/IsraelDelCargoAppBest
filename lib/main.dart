@@ -15,7 +15,6 @@ import 'package:latlong2/latlong.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await DatabaseHelper.instance.initDatabase();
   runApp(
     ChangeNotifierProvider(
       create: (_) => AppState(),
@@ -116,18 +115,28 @@ class DatabaseHelper {
 
   static Database? _database;
 
-  Future<Database> get database async => _database ??= await initDatabase();
+  // Геттер для базы данных
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await _initDatabase();
+    return _database!;
+  }
 
-  Future<Database> initDatabase() async {
-    String databasesPath = await getDatabasesPath();
-    String dbPath = path.join(databasesPath, 'israeldelcargo.db');
+  // Инициализация базы данных
+  Future<Database> _initDatabase() async {
+    try {
+      String databasesPath = await getDatabasesPath();
+      String dbPath = path.join(databasesPath, 'israeldelcargo.db');
 
-    return await openDatabase(
-      dbPath,
-      version: 5, // Увеличьте версию базы данных при изменениях схемы
-      onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
-    );
+      return await openDatabase(
+        dbPath,
+        version: 6, // Увеличьте версию базы данных при изменениях схемы
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      );
+    } catch (e) {
+      throw Exception('Ошибка инициализации базы данных: $e');
+    }
   }
 
   // Создание таблиц
@@ -163,37 +172,37 @@ class DatabaseHelper {
         serviceName TEXT,
         quantity INTEGER,
         price REAL,
-        trackingNumber TEXT
+        trackingNumber TEXT UNIQUE
       )
     ''');
   }
 
   // Обновление базы данных
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 5) {
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS shipments(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          trackingNumber TEXT UNIQUE,
-          status TEXT,
-          origin TEXT,
-          destination TEXT,
-          estimatedDelivery TEXT,
-          userId INTEGER,
-          FOREIGN KEY (userId) REFERENCES users(id)
-        )
-      ''');
+    if (oldVersion < 6) {
+      var tableInfo = await db.rawQuery('PRAGMA table_info(shipments)');
+      bool columnExists = tableInfo.any((column) => column['name'] == 'estimatedDelivery');
+
+      if (!columnExists) {
+        await db.execute('''
+          ALTER TABLE shipments ADD COLUMN estimatedDelivery TEXT
+        ''');
+      }
     }
   }
 
   // Пользователь CRUD
   Future<int> addUser(UserModel user) async {
     Database db = await database;
-    return await db.insert(
-      'users',
-      user.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
+    try {
+      return await db.insert(
+        'users',
+        user.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.abort, // Изменено на abort
+      );
+    } catch (e) {
+      throw Exception('Ошибка при добавлении пользователя: $e');
+    }
   }
 
   Future<UserModel?> getUser(String email, String password) async {
@@ -323,12 +332,20 @@ class DatabaseHelper {
   // Корзина CRUD
   Future<int> addToCart(CartItem item) async {
     Database db = await database;
-    return await db.insert('cart', {
-      'serviceName': item.serviceName,
-      'quantity': item.quantity,
-      'price': item.price,
-      'trackingNumber': item.trackingNumber,
-    });
+    try {
+      return await db.insert(
+        'cart',
+        {
+          'serviceName': item.serviceName,
+          'quantity': item.quantity,
+          'price': item.price,
+          'trackingNumber': item.trackingNumber,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace, // Изменено на replace
+      );
+    } catch (e) {
+      throw Exception('Ошибка при добавлении в корзину: $e');
+    }
   }
 
   Future<List<CartItem>> getCartItems() async {
@@ -359,6 +376,16 @@ class DatabaseHelper {
       whereArgs: [trackingNumber],
     );
   }
+
+  // Удаление конкретного товара из корзины
+  Future<int> removeFromCart(String trackingNumber) async {
+    Database db = await database;
+    return await db.delete(
+      'cart',
+      where: 'trackingNumber = ?',
+      whereArgs: [trackingNumber],
+    );
+  }
 }
 
 /// ==================== Управление состоянием ====================
@@ -372,19 +399,23 @@ class AppState extends ChangeNotifier {
   bool _isGuest = false; // Добавлено для гостевого входа
 
   ThemeMode get themeMode => _themeMode;
-  List<CartItem> get cartItems => _cartItems;
+  List<CartItem> get cartItems => List.unmodifiable(_cartItems);
   UserModel? get currentUser => _currentUser;
   bool get isAdmin => _isAdmin; // Добавлено для админки
   bool get isGuest => _isGuest; // Добавлено для гостевого входа
 
   bool get isDarkMode => _themeMode == ThemeMode.dark;
 
+  AppState() {
+    tryAutoLogin();
+  }
+
   void toggleTheme(bool isOn) {
     _themeMode = isOn ? ThemeMode.dark : ThemeMode.light;
     notifyListeners();
   }
 
-  void addToCart(String serviceName, double price) {
+  Future<void> addToCart(String serviceName, double price) async {
     final trackingNumber = 'TRK${DateTime.now().millisecondsSinceEpoch}';
     final existingItemIndex =
         _cartItems.indexWhere((item) => item.serviceName == serviceName);
@@ -397,40 +428,57 @@ class AppState extends ChangeNotifier {
         trackingNumber: trackingNumber,
       );
       _cartItems.add(newItem);
-      DatabaseHelper.instance.addToCart(newItem);
+      try {
+        await DatabaseHelper.instance.addToCart(newItem);
+      } catch (e) {
+        debugPrint('Ошибка при добавлении в корзину: $e');
+      }
     } else {
       _cartItems[existingItemIndex].quantity++;
-      DatabaseHelper.instance.updateCartItemQuantity(
-          _cartItems[existingItemIndex].trackingNumber,
-          _cartItems[existingItemIndex].quantity);
+      try {
+        await DatabaseHelper.instance.updateCartItemQuantity(
+            _cartItems[existingItemIndex].trackingNumber,
+            _cartItems[existingItemIndex].quantity);
+      } catch (e) {
+        debugPrint('Ошибка при обновлении корзины: $e');
+      }
     }
     notifyListeners();
   }
 
-  void removeFromCart(String serviceName) {
+  Future<void> removeFromCart(String trackingNumber) async {
     final existingItemIndex =
-        _cartItems.indexWhere((item) => item.serviceName == serviceName);
+        _cartItems.indexWhere((item) => item.trackingNumber == trackingNumber);
     if (existingItemIndex != -1) {
       _cartItems.removeAt(existingItemIndex);
-      DatabaseHelper.instance.clearCart();
-      for (var item in _cartItems) {
-        DatabaseHelper.instance.addToCart(item);
+      try {
+        await DatabaseHelper.instance.removeFromCart(trackingNumber);
+      } catch (e) {
+        debugPrint('Ошибка при удалении из корзины: $e');
       }
       notifyListeners();
     }
   }
 
-  void clearCart() {
+  Future<void> clearCart() async {
     _cartItems.clear();
-    DatabaseHelper.instance.clearCart();
+    try {
+      await DatabaseHelper.instance.clearCart();
+    } catch (e) {
+      debugPrint('Ошибка при очистке корзины: $e');
+    }
     notifyListeners();
   }
 
   // Увеличение количества товаров
   Future<void> increaseQuantity(CartItem item) async {
     item.quantity++;
-    await DatabaseHelper.instance.updateCartItemQuantity(
-        item.trackingNumber, item.quantity);
+    try {
+      await DatabaseHelper.instance.updateCartItemQuantity(
+          item.trackingNumber, item.quantity);
+    } catch (e) {
+      debugPrint('Ошибка при увеличении количества: $e');
+    }
     notifyListeners();
   }
 
@@ -438,28 +486,37 @@ class AppState extends ChangeNotifier {
   Future<void> decreaseQuantity(CartItem item) async {
     if (item.quantity > 1) {
       item.quantity--;
-      await DatabaseHelper.instance.updateCartItemQuantity(
-          item.trackingNumber, item.quantity);
+      try {
+        await DatabaseHelper.instance.updateCartItemQuantity(
+            item.trackingNumber, item.quantity);
+      } catch (e) {
+        debugPrint('Ошибка при уменьшении количества: $e');
+      }
     } else {
-      removeFromCart(item.serviceName);
+      await removeFromCart(item.trackingNumber);
     }
     notifyListeners();
   }
 
   Future<void> login(String email, String password) async {
-    UserModel? user = await DatabaseHelper.instance.getUser(email, password);
-    if (user != null) {
-      _currentUser = user;
-      _isGuest = false; // Добавлено
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('userId', user.id!);
-      // Проверка, является ли пользователь администратором
-      if (email == 'rf@mail.ru' && password == '123456789Rf') {
-        _isAdmin = true;
-      } else {
-        _isAdmin = false;
+    try {
+      UserModel? user = await DatabaseHelper.instance.getUser(email, password);
+      if (user != null) {
+        _currentUser = user;
+        _isGuest = false; // Добавлено
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('userId', user.id!);
+        // Проверка, является ли пользователь администратором
+        if (email == 'rf@mail.ru' && password == '123456789Rf') {
+          _isAdmin = true;
+        } else {
+          _isAdmin = false;
+        }
+        await loadCart();
+        notifyListeners();
       }
-      notifyListeners();
+    } catch (e) {
+      debugPrint('Ошибка при входе: $e');
     }
   }
 
@@ -467,6 +524,8 @@ class AppState extends ChangeNotifier {
     _currentUser = null;
     _isGuest = true;
     _isAdmin = false;
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userId');
     notifyListeners();
   }
 
@@ -476,26 +535,32 @@ class AppState extends ChangeNotifier {
     _isGuest = false; // Сброс гостевого входа
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('userId');
+    await clearCart();
     notifyListeners();
   }
 
   Future<void> tryAutoLogin() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    int? userId = prefs.getInt('userId');
-    if (userId != null) {
-      UserModel? user = await DatabaseHelper.instance.getUserById(userId);
-      if (user != null) {
-        _currentUser = user;
-        _isGuest = false; // Добавлено
-        // Проверка, является ли пользователь администратором
-        if (_currentUser!.email == 'rf@mail.ru' &&
-            _currentUser!.password == '123456789Rf') {
-          _isAdmin = true;
-        } else {
-          _isAdmin = false;
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      int? userId = prefs.getInt('userId');
+      if (userId != null) {
+        UserModel? user = await DatabaseHelper.instance.getUserById(userId);
+        if (user != null) {
+          _currentUser = user;
+          _isGuest = false; // Добавлено
+          // Проверка, является ли пользователь администратором
+          if (_currentUser!.email == 'rf@mail.ru' &&
+              _currentUser!.password == '123456789Rf') {
+            _isAdmin = true;
+          } else {
+            _isAdmin = false;
+          }
+          await loadCart();
+          notifyListeners();
         }
-        notifyListeners();
       }
+    } catch (e) {
+      debugPrint('Ошибка при автологине: $e');
     }
   }
 
@@ -515,7 +580,11 @@ class AppState extends ChangeNotifier {
       if (avatarPath != null) {
         _currentUser!.avatarPath = avatarPath;
       }
-      await DatabaseHelper.instance.updateUser(_currentUser!);
+      try {
+        await DatabaseHelper.instance.updateUser(_currentUser!);
+      } catch (e) {
+        debugPrint('Ошибка при обновлении профиля: $e');
+      }
       notifyListeners();
     }
   }
@@ -523,16 +592,24 @@ class AppState extends ChangeNotifier {
   Future<void> updateUserAvatar(String avatarPath) async {
     if (_currentUser != null) {
       _currentUser!.avatarPath = avatarPath;
-      await DatabaseHelper.instance.updateUser(_currentUser!);
+      try {
+        await DatabaseHelper.instance.updateUser(_currentUser!);
+      } catch (e) {
+        debugPrint('Ошибка при обновлении аватара: $e');
+      }
       notifyListeners();
     }
   }
 
   // Загрузка корзины из базы данных
   Future<void> loadCart() async {
-    _cartItems.clear();
-    _cartItems.addAll(await DatabaseHelper.instance.getCartItems());
-    notifyListeners();
+    try {
+      _cartItems.clear();
+      _cartItems.addAll(await DatabaseHelper.instance.getCartItems());
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Ошибка при загрузке корзины: $e');
+    }
   }
 }
 
@@ -605,60 +682,8 @@ class IsraelDelCargoApp extends StatelessWidget {
 }
 
 /// Обертка для определения экрана на основе аутентификации
-class AuthWrapper extends StatefulWidget {
+class AuthWrapper extends StatelessWidget {
   const AuthWrapper({Key? key}) : super(key: key);
-
-  @override
-  _AuthWrapperState createState() => _AuthWrapperState();
-}
-
-class _AuthWrapperState extends State<AuthWrapper> {
-  final LocalAuthentication auth = LocalAuthentication();
-  bool _canCheckBiometrics = false;
-  bool _isAuthenticated = false;
-
-  Future<void> _checkBiometrics() async {
-    try {
-      _canCheckBiometrics = await auth.canCheckBiometrics;
-    } on PlatformException {
-      _canCheckBiometrics = false;
-    }
-    if (!mounted) return;
-  }
-
-  Future<void> _authenticate() async {
-    try {
-      _isAuthenticated = await auth.authenticate(
-        localizedReason: 'Пожалуйста, подтвердите свою личность',
-        options: const AuthenticationOptions(biometricOnly: true),
-      );
-    } on PlatformException {
-      _isAuthenticated = false;
-    }
-    if (!mounted) return;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _checkBiometrics().then((_) {
-      if (_canCheckBiometrics) {
-        _authenticate().then((_) {
-          if (_isAuthenticated) {
-            final appState = Provider.of<AppState>(context, listen: false);
-            appState.tryAutoLogin().then((_) {
-              appState.loadCart();
-            });
-          }
-        });
-      } else {
-        final appState = Provider.of<AppState>(context, listen: false);
-        appState.tryAutoLogin().then((_) {
-          appState.loadCart();
-        });
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -708,7 +733,6 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     if (appState.currentUser != null) {
-      await appState.loadCart();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const MainPage()),
@@ -739,7 +763,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isAuthenticated) {
       final appState = Provider.of<AppState>(context, listen: false);
       await appState.tryAutoLogin();
-      await appState.loadCart();
       if (appState.currentUser != null) {
         Navigator.pushReplacement(
           context,
@@ -951,15 +974,21 @@ class _SignupScreenState extends State<SignupScreen> {
       password: _passwordController.text.trim(),
     );
 
-    int userId = await DatabaseHelper.instance.addUser(newUser);
-    if (userId > 0) {
+    try {
+      int userId = await DatabaseHelper.instance.addUser(newUser);
+      if (userId > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Регистрация успешна. Войдите в систему.')),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Пользователь с таким email уже существует')),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Регистрация успешна. Войдите в систему.')),
-      );
-      Navigator.pop(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Пользователь с таким email уже существует')),
+        SnackBar(content: Text('Ошибка регистрации: $e')),
       );
     }
 
@@ -1427,7 +1456,7 @@ class MapScreen extends StatelessWidget {
           Expanded(
             child: FlutterMap(
               options: MapOptions(
-                center: LatLng(55.779277, 37.631897), // Обновленные координаты
+                center: LatLng(55.781911, 37.623735), // Обновленные координаты
                 zoom: 16.0,
               ),
               children: [
@@ -1441,7 +1470,7 @@ class MapScreen extends StatelessWidget {
                     Marker(
                       width: 80.0,
                       height: 80.0,
-                      point: LatLng(55.779277, 37.631897),
+                      point: LatLng(55.781911, 37.623735),
                       builder: (ctx) => const Icon(
                         Icons.location_on,
                         color: Colors.red,
@@ -1487,7 +1516,20 @@ class _HomeContentState extends State<HomeContent> {
   final _widthController = TextEditingController();
   final _heightController = TextEditingController(); // Новое поле
 
-  // Список услуг с ценами
+  // Список всех стран СНГ
+  static const List<String> cisCountries = [
+    'Россия',
+    'Беларусь',
+    'Казахстан',
+    'Армения',
+    'Азербайджан',
+    'Киргизия',
+    'Молдова',
+    'Таджикистан',
+    'Узбекистан',
+  ];
+
+  // Список услуг с обновленными ценами
   final List<Map<String, dynamic>> services = const [
     {
       'name': 'Доставка документов',
@@ -1502,22 +1544,22 @@ class _HomeContentState extends State<HomeContent> {
     {
       'name': 'Одежда, обувь, головные уборы',
       'icon': Icons.shopping_bag,
-      'price': 2300.0,
+      'price': 2500.0,
     },
     {
       'name': 'Кошерное питание',
       'icon': Icons.fastfood,
-      'price': 2600.0,
+      'price': 2500.0,
     },
     {
       'name': 'Товары из Duty Free',
       'icon': Icons.airplane_ticket,
-      'price': 3000.0,
+      'price': 2500.0,
     },
     {
       'name': 'Маленькие посылки (до 1кг)',
       'icon': Icons.local_shipping,
-      'price': 3000.0,
+      'price': 2500.0,
     },
   ];
 
@@ -1612,18 +1654,15 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  void _calculateTotal(BuildContext context) {
+  Future<void> _calculateTotal(BuildContext context) async {
     if (_formKey.currentState!.validate()) {
       double weight = double.parse(_weightController.text.trim());
-      double length = double.parse(_lengthController.text.trim());
-      double width = double.parse(_widthController.text.trim());
-      double height = double.parse(_heightController.text.trim());
 
       // Формула расчета стоимости доставки для Москвы
-      double deliveryCost = (weight * 500.0) + (length * width * height * 0.1);
+      double deliveryCost = weight * 2500.0;
 
       final appState = Provider.of<AppState>(context, listen: false);
-      appState.addToCart('Доставка груза', deliveryCost);
+      await appState.addToCart('Доставка груза', deliveryCost);
 
       showDialog(
         context: context,
@@ -1652,7 +1691,7 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   void _showApplicationForm(BuildContext context) {
-    final appState = Provider.of<AppState>(context);
+    final appState = Provider.of<AppState>(context, listen: false);
     if (appState.isGuest) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Доступно только для зарегистрированных пользователей')),
@@ -1660,7 +1699,7 @@ class _HomeContentState extends State<HomeContent> {
     } else {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => ApplicationFormScreen()),
+        MaterialPageRoute(builder: (context) => const ApplicationFormScreen()),
       );
     }
   }
@@ -1789,24 +1828,12 @@ class _HomeContentState extends State<HomeContent> {
                               borderSide: BorderSide.none,
                             ),
                           ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'Россия',
-                              child: Text('Россия'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Израиль',
-                              child: Text('Израиль'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Грузия',
-                              child: Text('Грузия'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Казахстан',
-                              child: Text('Казахстан'),
-                            ),
-                          ],
+                          items: cisCountries
+                              .map((country) => DropdownMenuItem(
+                                    value: country,
+                                    child: Text(country),
+                                  ))
+                              .toList(),
                           onChanged: (value) {
                             setState(() {
                               _countryOrigin = value;
@@ -1834,24 +1861,12 @@ class _HomeContentState extends State<HomeContent> {
                               borderSide: BorderSide.none,
                             ),
                           ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'Россия',
-                              child: Text('Россия'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Израиль',
-                              child: Text('Израиль'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Грузия',
-                              child: Text('Грузия'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Казахстан',
-                              child: Text('Казахстан'),
-                            ),
-                          ],
+                          items: cisCountries
+                              .map((country) => DropdownMenuItem(
+                                    value: country,
+                                    child: Text(country),
+                                  ))
+                              .toList(),
                           onChanged: (value) {
                             setState(() {
                               _countryDestination = value;
@@ -2082,7 +2097,7 @@ class CartScreen extends StatelessWidget {
     } else {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => ApplicationFormScreen()),
+        MaterialPageRoute(builder: (context) => const ApplicationFormScreen()),
       );
     }
   }
@@ -2108,8 +2123,8 @@ class CartScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.delete),
-            onPressed: () {
-              appState.clearCart();
+            onPressed: () async {
+              await appState.clearCart();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Корзина очищена')),
               );
@@ -2150,7 +2165,7 @@ class CartScreen extends StatelessWidget {
                   ),
                   trailing: Text('${item.price * item.quantity} ₽'),
                   onLongPress: () {
-                    appState.removeFromCart(item.serviceName);
+                    appState.removeFromCart(item.trackingNumber);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                           content:
@@ -2184,8 +2199,11 @@ class CartScreen extends StatelessWidget {
 
 /// Экран оформления заявки (теперь открывается как новый экран)
 class ApplicationFormScreen extends StatefulWidget {
+  const ApplicationFormScreen({Key? key}) : super(key: key);
+
   @override
-  _ApplicationFormScreenState createState() => _ApplicationFormScreenState();
+  _ApplicationFormScreenState createState() =>
+      _ApplicationFormScreenState();
 }
 
 class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
@@ -2201,9 +2219,14 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
 
   final List<String> countries = [
     'Россия',
-    'Израиль',
-    'Грузия',
+    'Беларусь',
     'Казахстан',
+    'Армения',
+    'Азербайджан',
+    'Киргизия',
+    'Молдова',
+    'Таджикистан',
+    'Узбекистан',
   ];
 
   final Map<String, double> tariffs = {
@@ -2231,74 +2254,90 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
             'Товары из Duty Free',
             'Маленькие посылки (до 1кг)',
           ];
-    _selectedProduct = products.first;
+    _selectedProduct = products.isNotEmpty ? products.first : null;
   }
 
   void _sendApplication(BuildContext context) async {
-    if (_formKey.currentState!.validate()) {
-      final appState = Provider.of<AppState>(context, listen: false);
-      double total = appState.cartItems.fold(
-        0.0,
-        (sum, item) => sum + item.price * item.quantity,
-      );
-
-      double tariffMultiplier = tariffs[_selectedTariff!] ?? 1.0;
-      total *= tariffMultiplier;
-
-      final trackingNumber = 'TRK${DateTime.now().millisecondsSinceEpoch}';
-
-      final message =
-          'Здравствуйте!\n'
-          'Я хочу оформить заявку на услугу: $_selectedProduct\n'
-          'Имя: ${_nameController.text}\n'
-          'Телефон: ${_phoneController.text}\n'
-          'Email: ${_emailController.text}\n'
-          'Страна отправления: $_originCountry\n'
-          'Страна прибытия: $_destinationCountry\n'
-          'Тариф: $_selectedTariff\n'
-          'Описание: ${_descriptionController.text}\n'
-          'Итого к оплате: $total ₽\n'
-          'Трек-номер: $trackingNumber';
-
-      final encodedMessage = Uri.encodeComponent(message);
-      final url = Uri.parse('https://wa.me/79914992420?text=$encodedMessage');
-
+    if (_selectedProduct == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Открываем WhatsApp...')),
+        const SnackBar(content: Text('Корзина пуста')),
       );
+      return;
+    }
 
-      try {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
+    if (!_formKey.currentState!.validate()) return;
 
-        // Создаем запись об отправлении
-        Shipment shipment = Shipment(
-          trackingNumber: trackingNumber,
-          status: 'В обработке',
-          origin: _originCountry ?? '',
-          destination: _destinationCountry ?? '',
-          estimatedDelivery: DateTime.now()
-              .add(const Duration(days: 7))
-              .toIso8601String(), // Установим примерную дату доставки
-          userId: appState.currentUser?.id ?? 0,
-        );
-        await DatabaseHelper.instance.addShipment(shipment);
+    final appState = Provider.of<AppState>(context, listen: false);
+    double total = appState.cartItems.fold(
+      0.0,
+      (sum, item) => sum + item.price * item.quantity,
+    );
 
-        // Очищаем корзину
-        appState.clearCart();
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Заявка отправлена')),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Не удалось открыть WhatsApp')),
-        );
+    double tariffMultiplier = tariffs[_selectedTariff!] ?? 1.0;
+    total *= tariffMultiplier;
+
+    final trackingNumber = 'TRK${DateTime.now().millisecondsSinceEpoch}';
+
+    final message =
+        'Здравствуйте!\n'
+        'Я хочу оформить заявку на услугу: $_selectedProduct\n'
+        'Имя: ${_nameController.text}\n'
+        'Телефон: ${_phoneController.text}\n'
+        'Email: ${_emailController.text}\n'
+        'Страна отправления: $_originCountry\n'
+        'Страна прибытия: $_destinationCountry\n'
+        'Тариф: $_selectedTariff\n'
+        'Описание: ${_descriptionController.text}\n'
+        'Итого к оплате: $total ₽\n'
+        'Трек-номер: $trackingNumber';
+
+    final encodedMessage = Uri.encodeComponent(message);
+    final url = Uri.parse('https://wa.me/79914992420?text=$encodedMessage');
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Открываем WhatsApp...')),
+    );
+
+    try {
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        throw 'Не удалось открыть WhatsApp';
       }
+
+      // Создаем запись об отправлении
+      Shipment shipment = Shipment(
+        trackingNumber: trackingNumber,
+        status: 'В обработке',
+        origin: _originCountry ?? '',
+        destination: _destinationCountry ?? '',
+        estimatedDelivery: DateTime.now()
+            .add(const Duration(days: 7))
+            .toIso8601String(), // Установим примерную дату доставки
+        userId: appState.currentUser?.id ?? 0,
+      );
+      await DatabaseHelper.instance.addShipment(shipment);
+
+      // Очищаем корзину
+      await appState.clearCart();
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Заявка отправлена')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось открыть WhatsApp')),
+      );
     }
   }
 
   void _makePayment(BuildContext context) async {
     final appState = Provider.of<AppState>(context, listen: false);
+    if (_selectedTariff == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Пожалуйста, выберите тариф')),
+      );
+      return;
+    }
+
     double total = appState.cartItems.fold(
       0.0,
       (sum, item) => sum + item.price * item.quantity,
@@ -2317,7 +2356,9 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
     );
 
     try {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        throw 'Не удалось открыть ссылку для оплаты';
+      }
 
       // Создаем запись об отправлении
       Shipment shipment = Shipment(
@@ -2332,7 +2373,7 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
       await DatabaseHelper.instance.addShipment(shipment);
 
       // Очищаем корзину
-      appState.clearCart();
+      await appState.clearCart();
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Оплата выполнена, заказ оформлен')),
@@ -2660,7 +2701,7 @@ class AboutUsScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       const Text(
-                        'ISRAELDELCARGO - ваш надежный партнер в доставке товаров и документов между Россией, Израилем, Грузией и Казахстаном. Мы предлагаем быстрые и надежные услуги доставки для ваших нужд.',
+                        'ISRAELDELCARGO - ваш надежный партнер в доставке товаров и документов между Россией, Беларусью, Казахстаном, Арменией, Азербайджаном, Киргизией, Молдовой, Таджикистаном и Узбекистаном. Мы предлагаем быстрые и надежные услуги доставки для ваших нужд.',
                         style: TextStyle(fontSize: 16),
                         textAlign: TextAlign.center,
                       ),
@@ -2690,8 +2731,10 @@ class AboutUsScreen extends StatelessWidget {
                           );
 
                           try {
-                            await launchUrl(url,
-                                mode: LaunchMode.externalApplication);
+                            if (!await launchUrl(url,
+                                mode: LaunchMode.externalApplication)) {
+                              throw 'Не удалось открыть ссылку';
+                            }
                           } catch (e) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -2722,9 +2765,9 @@ class AboutUsScreen extends StatelessWidget {
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
-  void _logout(BuildContext context) {
+  void _logout(BuildContext context) async {
     final appState = Provider.of<AppState>(context, listen: false);
-    appState.logout();
+    await appState.logout();
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -2893,13 +2936,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickAvatar() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 50);
-    if (pickedFile != null) {
-      setState(() {
-        _avatarPath = pickedFile.path;
-      });
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+          source: ImageSource.gallery, imageQuality: 50);
+      if (pickedFile != null) {
+        setState(() {
+          _avatarPath = pickedFile.path;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка при выборе изображения: $e')),
+      );
     }
   }
 
@@ -3111,23 +3160,28 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
           return const Center(child: Text('Нет зарегистрированных пользователей.'));
         } else {
           final users = snapshot.data!;
-          return ListView.builder(
-            itemCount: users.length,
-            itemBuilder: (context, index) {
-              final user = users[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: user.avatarPath != null
-                      ? FileImage(File(user.avatarPath!))
-                      : const AssetImage('assets/images/avatar.png') as ImageProvider,
-                ),
-                title: Text(user.name),
-                subtitle: Text(user.email),
-                onTap: () {
-                  // Дополнительно: показать подробную информацию о пользователе
-                },
-              );
+          return RefreshIndicator(
+            onRefresh: () async {
+              setState(() {});
             },
+            child: ListView.builder(
+              itemCount: users.length,
+              itemBuilder: (context, index) {
+                final user = users[index];
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: user.avatarPath != null
+                        ? FileImage(File(user.avatarPath!))
+                        : const AssetImage('assets/images/avatar.png') as ImageProvider,
+                  ),
+                  title: Text(user.name),
+                  subtitle: Text(user.email),
+                  onTap: () {
+                    // Дополнительно: показать подробную информацию о пользователе
+                  },
+                );
+              },
+            ),
           );
         }
       },
@@ -3146,34 +3200,39 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
           return const Center(child: Text('Нет заказов.'));
         } else {
           final shipments = snapshot.data!;
-          return ListView.builder(
-            itemCount: shipments.length,
-            itemBuilder: (context, index) {
-              final shipment = shipments[index];
-              return ListTile(
-                leading: const Icon(Icons.local_shipping),
-                title: Text('Трек-номер: ${shipment.trackingNumber}'),
-                subtitle: Text('Статус: ${shipment.status}'),
-                trailing: DropdownButton<String>(
-                  value: shipment.status,
-                  items: <String>['В обработке', 'В пути', 'Доставлено']
-                      .map((String status) {
-                    return DropdownMenuItem<String>(
-                      value: status,
-                      child: Text(status),
-                    );
-                  }).toList(),
-                  onChanged: (String? newStatus) async {
-                    if (newStatus != null) {
-                      setState(() {
-                        shipment.status = newStatus;
-                      });
-                      await DatabaseHelper.instance.updateShipment(shipment);
-                    }
-                  },
-                ),
-              );
+          return RefreshIndicator(
+            onRefresh: () async {
+              setState(() {});
             },
+            child: ListView.builder(
+              itemCount: shipments.length,
+              itemBuilder: (context, index) {
+                final shipment = shipments[index];
+                return ListTile(
+                  leading: const Icon(Icons.local_shipping),
+                  title: Text('Трек-номер: ${shipment.trackingNumber}'),
+                  subtitle: Text('Статус: ${shipment.status}'),
+                  trailing: DropdownButton<String>(
+                    value: shipment.status,
+                    items: <String>['В обработке', 'В пути', 'Доставлено']
+                        .map((String status) {
+                      return DropdownMenuItem<String>(
+                        value: status,
+                        child: Text(status),
+                      );
+                    }).toList(),
+                    onChanged: (String? newStatus) async {
+                      if (newStatus != null) {
+                        setState(() {
+                          shipment.status = newStatus;
+                        });
+                        await DatabaseHelper.instance.updateShipment(shipment);
+                      }
+                    },
+                  ),
+                );
+              },
+            ),
           );
         }
       },
